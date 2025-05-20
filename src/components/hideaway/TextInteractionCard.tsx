@@ -17,7 +17,7 @@ interface TextInteractionCardProps {
   messageToEmbed: string;
   onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
-  stegoText: string | null; 
+  stegoText: string | null; // Prop still received, but not displayed here in embed mode
   
   operationMode: OperationMode;
   capacityInfo: CapacityInfo | null;
@@ -31,7 +31,7 @@ export default function TextInteractionCard({
   onCoverTextChange,
   messageToEmbed,
   onMessageToEmbedChange,
-  stegoText,
+  stegoText, // Not directly used for display in embed mode anymore
   operationMode,
   capacityInfo,
   statusMessage,
@@ -51,7 +51,7 @@ export default function TextInteractionCard({
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl">
-          {operationMode === 'embed' ? 'Texte Porteur & Message Secret' : 'Texte Stéganographié'}
+          {operationMode === 'embed' ? 'Texte Porteur & Message Secret' : 'Texte Stéganographié à Analyser'}
         </CardTitle>
         <CardDescription>
           {operationMode === 'embed' 
@@ -68,10 +68,10 @@ export default function TextInteractionCard({
           </Label>
           <Textarea
             id="coverOrStegoText"
-            value={operationMode === 'embed' ? coverText : stegoText || coverText} 
+            value={operationMode === 'embed' ? coverText : (stegoText || coverText)} 
             onChange={onCoverTextChange} 
             placeholder={operationMode === 'embed' ? "Collez votre texte porteur ici..." : "Collez le texte stéganographié ici..."}
-            rows={operationMode === 'embed' ? 8 : 12} // More rows for extract as message is not shown here
+            rows={operationMode === 'embed' ? 8 : 12}
             className="text-base"
             aria-label={operationMode === 'embed' ? 'Texte porteur' : 'Texte stéganographié'}
           />
@@ -148,6 +148,7 @@ export default function TextInteractionCard({
           </div>
         )}
 
+        {/* La section suivante est retirée car l'affichage du stegoText en mode embed est déplacé vers AlgorithmActionsCard
         {operationMode === 'embed' && stegoText && (
           <div className="space-y-2">
             <Label htmlFor="stegoResultText" className="text-base">Texte Stéganographié Résultant :</Label>
@@ -161,6 +162,7 @@ export default function TextInteractionCard({
             />
           </div>
         )}
+        */}
          {statusMessage && (
           <p className={`text-sm font-medium ${
             statusMessage.type === 'success' ? 'text-green-600 dark:text-green-400' :
@@ -174,5 +176,4 @@ export default function TextInteractionCard({
     </Card>
   );
 }
-
     

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import type { SteganographyAlgorithm, OperationMode } from "@/types";
 import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2, FileText as FileTextIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 
 interface AlgorithmActionsCardProps {
   algorithms: SteganographyAlgorithm[];
@@ -33,10 +34,10 @@ interface AlgorithmActionsCardProps {
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
   extractedMessage: string | null;
   
-  // For Text Tool specific actions
   isTextTool?: boolean;
   onCopyStegoText?: () => void;
   isCopyStegoTextPossible?: boolean;
+  stegoText?: string | null; // Added to display stego text for text tool
 }
 
 export default function AlgorithmActionsCard({
@@ -60,6 +61,7 @@ export default function AlgorithmActionsCard({
   isTextTool = false,
   onCopyStegoText,
   isCopyStegoTextPossible,
+  stegoText, // Added prop
 }: AlgorithmActionsCardProps) {
   const selectedAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithmId);
 
@@ -103,7 +105,7 @@ export default function AlgorithmActionsCard({
         </div>
 
         {operationMode === 'embed' && (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4"> {/* Changed to space-y-4 for better spacing with new textarea */}
             <Button
               onClick={onEmbed}
               disabled={!isEmbedPossible || isProcessing}
@@ -117,12 +119,27 @@ export default function AlgorithmActionsCard({
                 <><Shuffle className="mr-2 h-5 w-5" /> Intégrer le Message</>
               )}
             </Button>
+
+            {isTextTool && stegoText && !isProcessing && (
+              <div className="space-y-2">
+                <Label htmlFor="stegoResultTextDisplay" className="text-base font-medium">Texte Stéganographié :</Label>
+                <Textarea
+                  id="stegoResultTextDisplay"
+                  value={stegoText}
+                  readOnly
+                  rows={6} 
+                  className="text-sm bg-muted/50"
+                  aria-label="Texte stéganographié résultant"
+                />
+              </div>
+            )}
+            
             {isTextTool && onCopyStegoText && (
                  <Button
                     onClick={onCopyStegoText}
                     disabled={!isCopyStegoTextPossible || isProcessing}
                     variant="outline"
-                    size="lg"
+                    size="lg" // Maintained lg for consistency, can be sm if preferred
                     className="w-full text-base"
                     aria-label="Copier le texte stéganographié"
                 >
@@ -194,7 +211,7 @@ export default function AlgorithmActionsCard({
             statusMessage.type === 'success' ? 'text-green-600 dark:text-green-400' :
             statusMessage.type === 'error' ? 'text-red-600 dark:text-red-400' :
             'text-blue-600 dark:text-blue-400' 
-          }`}>
+          } pt-2`}> {/* Added pt-2 for spacing */}
             {statusMessage.type === 'success' && <ShieldCheck className="inline mr-1 h-4 w-4" />}
             {statusMessage.text}
           </p>
@@ -203,3 +220,4 @@ export default function AlgorithmActionsCard({
     </Card>
   );
 }
+    

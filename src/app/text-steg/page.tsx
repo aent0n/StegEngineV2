@@ -13,7 +13,7 @@ import {
   extractMessageFromText, 
   getTextCapacityInfo 
 } from '@/lib/textSteganography';
-import { generateCoverText, type CoverTextGeneratorInput } from '@/ai/flows/cover-text-generator'; // Importation du nouveau flux
+import { generateCoverText, type CoverTextGeneratorInput } from '@/ai/flows/cover-text-generator';
 
 const availableAlgorithms: SteganographyAlgorithm[] = [whitespaceTextAlgorithm]; 
 
@@ -83,7 +83,7 @@ const initialState: StegToolState = {
   capacityInfo: null,
   coverText: initialCoverText,
   stegoText: null,
-  isGeneratingCoverText: false, // Nouvel état pour le chargement de l'IA
+  isGeneratingCoverText: false,
 };
 
 export default function TextStegPage() {
@@ -112,7 +112,6 @@ export default function TextStegPage() {
     if (state.coverText && state.selectedAlgorithmId) {
       updateCapacity(state.coverText, state.selectedAlgorithmId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.coverText, state.selectedAlgorithmId, updateCapacity]);
 
   const handleCoverTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -182,9 +181,9 @@ export default function TextStegPage() {
         ...prev, 
         isProcessing: false, 
         stegoText: resultStegoText, 
-        statusMessage: {type: 'success', text:`Message intégré avec succès via ${selectedAlgorithm.name}. Le résultat est affiché ci-dessous.`} 
+        statusMessage: {type: 'success', text:`Message intégré avec succès via ${selectedAlgorithm.name}.`} 
       }));
-      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}.` });
+      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}. Le résultat est affiché.` });
     } catch (error: any) {
       console.error(`Erreur d'intégration texte (${selectedAlgorithm.name}):`, error);
       setState(prev => ({ ...prev, isProcessing: false, stegoText: null, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithm.name}): ${error.message}`} }));
@@ -343,12 +342,12 @@ export default function TextStegPage() {
             extractedMessage={state.extractedMessage}
             isTextTool={true} 
             onCopyStegoText={handleCopyStegoText} 
-            isCopyStegoTextPossible={isCopyStegoTextPossible} 
+            isCopyStegoTextPossible={isCopyStegoTextPossible}
+            stegoText={state.stegoText} // Pass stegoText here
           />
         </div>
       </div>
     </div>
   );
 }
-
     
