@@ -32,7 +32,7 @@ function binaryToText(binary: string): string {
  */
 function numberToBinary(num: number, bits: number): string {
   const binary = num.toString(2);
-  return '0'.repeat(bits - binary.length) + binary;
+  return '0'.repeat(Math.max(0, bits - binary.length)) + binary;
 }
 
 /**
@@ -76,6 +76,9 @@ const MESSAGE_LENGTH_BITS = 32; // Using 32 bits to store the length of the mess
 export function calculateCapacity(imageData: ImageData): number {
   const totalPixels = imageData.width * imageData.height;
   const totalBitsAvailable = totalPixels * 3; // R, G, B channels, 1 bit each
+  if (totalBitsAvailable < MESSAGE_LENGTH_BITS) {
+    return 0; // Not enough space for even the length metadata
+  }
   const bitsForPayload = totalBitsAvailable - MESSAGE_LENGTH_BITS;
   return Math.floor(bitsForPayload / 8); // Convert bits to bytes
 }
@@ -97,7 +100,7 @@ export async function embedMessageInImage(file: File, message: string): Promise<
   const messageBinary = textToBinary(message);
   const messageLengthInBits = messageBinary.length;
 
-  if (messageLengthInBits / 8 > capacityBytes) {
+  if (Math.ceil(messageLengthInBits / 8) > capacityBytes) {
     throw new Error(
       `Message trop long (${Math.ceil(messageLengthInBits/8)} octets) pour l'image sélectionnée (capacité: ${capacityBytes} octets).`
     );
@@ -148,14 +151,14 @@ export async function extractMessageFromImage(file: File): Promise<string> {
 
   const imageData = await getImageData(file);
   const data = imageData.data;
-  let extractedBits = '';
+  let extractedLengthBits = '';
 
   // 1. Extract message length (first MESSAGE_LENGTH_BITS bits)
   let lengthBitsRead = 0;
   for (let i = 0; i < data.length && lengthBitsRead < MESSAGE_LENGTH_BITS; i += 4) {
     for (let channel = 0; channel < 3; channel++) {
       if (lengthBitsRead < MESSAGE_LENGTH_BITS) {
-        extractedBits += (data[i + channel] & 1).toString();
+        extractedLengthBits += (data[i + channel] & 1).toString();
         lengthBitsRead++;
       } else {
         break;
@@ -163,59 +166,56 @@ export async function extractMessageFromImage(file: File): Promise<string> {
     }
   }
   
-  const messageLengthInBits = parseInt(extractedBits.substring(0, MESSAGE_LENGTH_BITS), 2);
-  extractedBits = ''; // Reset for message payload
+  if (lengthBitsRead < MESSAGE_LENGTH_BITS) {
+    throw new Error("Impossible d'extraire la longueur complète du message. Le fichier est peut-être trop petit ou corrompu.");
+  }
 
-  if (isNaN(messageLengthInBits) || messageLengthInBits <= 0) {
-    throw new Error("Impossible de déterminer la longueur du message caché, ou longueur invalide.");
+  const messageLengthInBits = parseInt(extractedLengthBits, 2);
+
+  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) {
+    throw new Error("Impossible de déterminer la longueur du message caché, ou format de longueur invalide.");
+  }
+
+  if (messageLengthInBits === 0) {
+    return ""; // Valid empty message
   }
   
   const capacityBytes = calculateCapacity(imageData);
-  if (messageLengthInBits / 8 > capacityBytes) {
-      throw new Error(`La longueur de message annoncée (${messageLengthInBits/8} octets) dépasse la capacité de l'image (${capacityBytes} octets). Le fichier est peut-être corrompu ou n'a pas été encodé par cet outil.`);
+  if (Math.ceil(messageLengthInBits / 8) > capacityBytes) {
+      throw new Error(`La longueur de message annoncée (${Math.ceil(messageLengthInBits/8)} octets) dépasse la capacité de l'image (${capacityBytes} octets). Le fichier est peut-être corrompu ou n'a pas été encodé par cet outil.`);
   }
-
 
   // 2. Extract message payload
+  let extractedMessageBits = '';
   let messageBitsRead = 0;
-  let dataIndexOffset = Math.ceil(MESSAGE_LENGTH_BITS / 3) * 4; // Start reading after the length metadata
+  let currentBitInStream = 0; // Tracks the overall bit position in the steganographic data (length + payload)
 
   for (let i = 0; i < data.length && messageBitsRead < messageLengthInBits; i += 4) {
-      // Ensure we skip bits already used for length metadata by only processing relevant pixels
-      if (i < dataIndexOffset && (i + (4 - (dataIndexOffset % 4)) % 4) < dataIndexOffset) {
-          //This logic is to correctly handle the pixel boundary for message length
-          let startChannel = 0;
-          if (i === (dataIndexOffset - (dataIndexOffset %4))) { // If we are at the pixel where length metadata ends
-             startChannel = (MESSAGE_LENGTH_BITS % 3);
-             if (startChannel === 0 && MESSAGE_LENGTH_BITS > 0) startChannel = 3; // if it ended exactly on a pixel boundary
-          } else if (i < dataIndexOffset) {
-              continue; // this pixel was fully used for length
-          }
-          
-          for (let channel = startChannel; channel < 3; channel++) {
-              if (messageBitsRead < messageLengthInBits) {
-                  extractedBits += (data[i + channel] & 1).toString();
-                  messageBitsRead++;
-              } else break;
-          }
-      } else if ( i >= dataIndexOffset) {
-          for (let channel = 0; channel < 3; channel++) {
-            if (messageBitsRead < messageLengthInBits) {
-              extractedBits += (data[i + channel] & 1).toString();
-              messageBitsRead++;
-            } else {
-              break;
-            }
-          }
+    for (let channel = 0; channel < 3; channel++) { 
+      if (currentBitInStream >= MESSAGE_LENGTH_BITS) { 
+        if (messageBitsRead < messageLengthInBits) {
+          extractedMessageBits += (data[i + channel] & 1).toString();
+          messageBitsRead++;
+        } else {
+          break; 
+        }
       }
+      currentBitInStream++;
+      
+      if (currentBitInStream >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
+          break;
+      }
+    }
+    if (messageBitsRead >= messageLengthInBits || currentBitInStream >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
+        break; 
+    }
   }
-
 
   if (messageBitsRead < messageLengthInBits) {
     throw new Error("N'a pas pu extraire le message complet. Le fichier est peut-être corrompu ou incomplet.");
   }
 
-  return binaryToText(extractedBits);
+  return binaryToText(extractedMessageBits);
 }
 
 /**
