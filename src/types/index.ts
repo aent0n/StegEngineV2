@@ -19,8 +19,8 @@ export interface CapacityInfo {
 export interface StegToolState {
   carrierFile: File | null;
   fileName: string | null;
-  filePreviewUrl: string | null; // Preview of original uploaded file
-  stegoFileDataUri: string | null; // Data URI of the image with embedded message (after embed operation)
+  filePreviewUrl: string | null; // Preview of original uploaded file or Object URL for audio
+  stegoFileDataUri: string | null; // Data URI of the image/audio with embedded message (after embed operation)
   
   messageToEmbed: string; 
   extractedMessage: string | null; 
@@ -56,14 +56,15 @@ export const lsbPngAlgorithm: SteganographyAlgorithm = {
 
 export const lsbAudioWavAlgorithm: SteganographyAlgorithm = {
   id: 'lsb_audio_wav',
-  name: 'LSB (Audio WAV) - Simulé',
-  description: 'Simulation d\'intégration par bit de poids faible pour les fichiers audio WAV.',
+  name: 'LSB (Audio WAV - 16 bits)',
+  description: 'Intégration par bit de poids faible pour fichiers audio WAV (PCM 16 bits).',
   supportedFileTypes: ['audio/wav', 'audio/wave', 'audio/x-wav'],
 };
 
 export const mockAlgorithms: SteganographyAlgorithm[] = [
   lsbPngAlgorithm,
   lsbAudioWavAlgorithm,
+  // Les algorithmes suivants restent simulés pour l'instant
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
   { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
