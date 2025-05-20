@@ -7,23 +7,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, FileText, Sparkles, Loader2 } from "lucide-react";
-import type { OperationMode, CapacityInfo } from '@/types';
+import type { OperationMode, CapacityInfo, SteganographyAlgorithm } from '@/types';
 import { Button } from '@/components/ui/button';
+import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from '@/types';
+
 
 interface TextInteractionCardProps {
-  coverText: string;
+  coverText: string; // This will be the primary text area: cover text in embed, stego text in extract
   onCoverTextChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
   messageToEmbed: string;
   onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
-  stegoText: string | null; // Prop still received, but not displayed here in embed mode
+  stegoText: string | null; 
   
   operationMode: OperationMode;
   capacityInfo: CapacityInfo | null;
   statusMessage?: { type: 'success' | 'error' | 'info', text: string } | null;
   onGenerateAICoverText: (topic?: string) => Promise<void>;
   isGeneratingCoverText?: boolean;
+  selectedAlgorithmId: string | null;
 }
 
 export default function TextInteractionCard({
@@ -31,12 +34,13 @@ export default function TextInteractionCard({
   onCoverTextChange,
   messageToEmbed,
   onMessageToEmbedChange,
-  stegoText, // Not directly used for display in embed mode anymore
+  stegoText, 
   operationMode,
   capacityInfo,
   statusMessage,
   onGenerateAICoverText,
   isGeneratingCoverText,
+  selectedAlgorithmId,
 }: TextInteractionCardProps) {
   
   const messageBytes = operationMode === 'embed' && messageToEmbed ? new TextEncoder().encode(messageToEmbed).length : 0;
@@ -46,6 +50,17 @@ export default function TextInteractionCard({
 
   const displayCapacityInfo = capacityInfo; 
   const showProgressBar = operationMode === 'embed' && capacityInfo && !capacityInfo.isEstimate && capacityInfo.capacityBytes > 0;
+
+  const getCapacityDetailsText = () => {
+    if (!capacityInfo) return "";
+    if (selectedAlgorithmId === whitespaceTextAlgorithm.id) {
+      return `(${coverText.split('\n').length} lignes)`;
+    } else if (selectedAlgorithmId === zeroWidthCharsTextAlgorithm.id) {
+      const cleanTextLength = coverText.replace(new RegExp(`[\u200B\u200C]`, 'g'), '').length;
+      return `(${cleanTextLength} caractères porteurs)`;
+    }
+    return "";
+  };
 
   return (
     <Card className="shadow-lg">
@@ -64,13 +79,13 @@ export default function TextInteractionCard({
         
         <div className="space-y-2">
           <Label htmlFor="coverOrStegoText" className="text-base">
-            {operationMode === 'embed' ? '1. Texte Porteur' : '1. Texte Stéganographié à Analyser'}
+            {operationMode === 'embed' ? '1. Texte Porteur' : '1. Texte Stéganographié'}
           </Label>
           <Textarea
             id="coverOrStegoText"
-            value={operationMode === 'embed' ? coverText : (stegoText || coverText)} 
+            value={coverText} 
             onChange={onCoverTextChange} 
-            placeholder={operationMode === 'embed' ? "Collez votre texte porteur ici..." : "Collez le texte stéganographié ici..."}
+            placeholder={operationMode === 'embed' ? "Collez votre texte porteur ici ou générez-en un..." : "Collez le texte stéganographié ici..."}
             rows={operationMode === 'embed' ? 8 : 12}
             className="text-base"
             aria-label={operationMode === 'embed' ? 'Texte porteur' : 'Texte stéganographié'}
@@ -96,13 +111,12 @@ export default function TextInteractionCard({
                 <FileText size={16}/> Informations sur le Texte
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Nombre de lignes : {coverText.split('\n').length}
+                 {capacityInfo.isEstimate ? "Capacité stéganographique estimée" : "Capacité stéganographique"} : {capacityInfo.capacityBytes} octets {getCapacityDetailsText()}
               </p>
               {operationMode === 'embed' && (
                 <>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Message : {messageBytes} octets / 
-                    {capacityInfo.isEstimate ? " Capacité estimée" : " Capacité max"} : {capacityInfo.capacityBytes} octets
+                    Message : {messageBytes} octets 
                   </p>
                   {showProgressBar && (
                     <div className="w-full mt-1 relative">
@@ -124,11 +138,6 @@ export default function TextInteractionCard({
                   )}
                 </>
               )}
-               {operationMode === 'extract' && (
-                 <p className="mt-1 text-xs text-muted-foreground">
-                   {capacityInfo.isEstimate ? "Capacité stéganographique estimée" : "Capacité stéganographique calculée"} : {capacityInfo.capacityBytes} octets
-                 </p>
-               )}
             </div>
           )}
         </div>
@@ -147,22 +156,6 @@ export default function TextInteractionCard({
             />
           </div>
         )}
-
-        {/* La section suivante est retirée car l'affichage du stegoText en mode embed est déplacé vers AlgorithmActionsCard
-        {operationMode === 'embed' && stegoText && (
-          <div className="space-y-2">
-            <Label htmlFor="stegoResultText" className="text-base">Texte Stéganographié Résultant :</Label>
-            <Textarea
-              id="stegoResultText"
-              value={stegoText}
-              readOnly
-              rows={8}
-              className="text-base bg-muted/50"
-              aria-label="Texte stéganographié résultant"
-            />
-          </div>
-        )}
-        */}
          {statusMessage && (
           <p className={`text-sm font-medium ${
             statusMessage.type === 'success' ? 'text-green-600 dark:text-green-400' :

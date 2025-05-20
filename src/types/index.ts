@@ -41,7 +41,7 @@ export interface StegToolState {
 
   coverText?: string;
   stegoText?: string;
-  isGeneratingCoverText?: boolean; // Nouvel état pour le chargement de l'IA texte
+  isGeneratingCoverText?: boolean;
 }
 
 export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf' | 'video';
@@ -86,8 +86,16 @@ export const wavMetadataCommentAlgorithm: SteganographyAlgorithm = {
 
 export const whitespaceTextAlgorithm: SteganographyAlgorithm = {
   id: 'whitespace_text_txt',
-  name: 'Espaces Blancs (Texte .txt)',
-  description: 'Cache des données en utilisant des espaces en fin de ligne dans les fichiers texte (.txt). Un espace pour "0", deux espaces pour "1".',
+  name: 'Espaces Blancs (Fin de Ligne)',
+  description: 'Cache des données en utilisant des espaces en fin de ligne (1 espace pour "0", 2 pour "1"). Capacité: 1 bit/ligne.',
+  supportedFileTypes: ['text/plain'],
+  isTextBased: true,
+};
+
+export const zeroWidthCharsTextAlgorithm: SteganographyAlgorithm = {
+  id: 'zero_width_chars_text_txt',
+  name: 'Caractères Largeur Nulle (ZWC)',
+  description: 'Cache des données en insérant des caractères Unicode invisibles (U+200B pour "0", U+200C pour "1") après chaque caractère du texte porteur. Capacité: 1 bit/caractère porteur.',
   supportedFileTypes: ['text/plain'],
   isTextBased: true,
 };
@@ -98,6 +106,7 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   lsbAudioWavAlgorithm,
   wavMetadataCommentAlgorithm,
   whitespaceTextAlgorithm,
+  zeroWidthCharsTextAlgorithm,
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
 ];
