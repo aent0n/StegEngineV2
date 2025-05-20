@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Steg'Engine - Modern Steganography Tool",
-  description: "Hide messages in plain sight with Steg'Engine, your modern steganography solution.",
+  title: "Steg'Engine - Outil de Stéganographie",
+  description: "Votre boîte à outils complète pour les opérations de stéganographie.",
 };
 
 export default function RootLayout({
@@ -27,10 +27,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <body className={cn(geistSans.variable, geistMono.variable, "antialiased flex flex-col min-h-screen")}>
         <AppHeader />
-        <main className="flex-grow container mx-auto px-4 py-8">
+        <main className="flex-grow container mx-auto px-4 sm:px-6 py-8">
           {children}
         </main>
         <AppFooter />

@@ -1,13 +1,17 @@
+import Link from 'next/link';
+
 export default function AppFooter() {
   return (
-    <footer className="bg-secondary text-secondary-foreground py-6 text-center">
-      <div className="container mx-auto px-4">
-        <p className="text-sm">
-          &copy; {new Date().getFullYear()} Steg'Engine. All rights reserved.
-        </p>
-        <p className="text-xs mt-1">
-          Securely conceal your messages.
-        </p>
+    <footer className="bg-foreground text-background mt-16"> {/* bg-gray-800 equivalent, text-white equivalent */}
+      <div className="container mx-auto px-4 sm:px-6 py-8">
+        <div className="text-center">
+          <p>&copy; {new Date().getFullYear()} Steg'Engine. Mis en œuvre par <a href="https://github.com/aent0n" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition underline">aent0n</a></p>
+          <div className="mt-4 space-x-4">
+            <Link href="#" className="hover:text-primary transition text-sm">Politique de Confidentialité</Link>
+            <Link href="#" className="hover:text-primary transition text-sm">Conditions de Service</Link>
+            <Link href="#" className="hover:text-primary transition text-sm">Contact</Link>
+          </div>
+        </div>
       </div>
     </footer>
   );

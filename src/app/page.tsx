@@ -2,10 +2,12 @@
 
 import type React from 'react';
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import FileUploadCard from "@/components/hideaway/FileUploadCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
 import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
-import type { HideawayState, SteganographyAlgorithm } from "@/types";
+import WhyChooseUsSection from "@/components/hideaway/WhyChooseUsSection";
+import type { HideawayState } from "@/types";
 import { mockAlgorithms } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
@@ -36,7 +38,7 @@ export default function StegEnginePage() {
         carrierFile: file,
         fileName: file.name,
         filePreviewUrl,
-        isMessageEmbedded: false, // Reset embed status on new file
+        isMessageEmbedded: false, 
       }));
     } else {
       setState(prev => ({
@@ -59,53 +61,48 @@ export default function StegEnginePage() {
 
   const handleAiSuggestion = useCallback((suggestion: AlgorithmAdvisorOutput) => {
     setState(prev => ({ ...prev, aiSuggestion: suggestion }));
-    // Optionally auto-select the suggested algorithm if found in mockAlgorithms
     const suggestedAlgo = mockAlgorithms.find(algo => algo.name.toLowerCase().includes(suggestion.algorithm.toLowerCase().split(" ")[0]));
     if (suggestedAlgo) {
       setState(prev => ({ ...prev, selectedAlgorithmId: suggestedAlgo.id, isMessageEmbedded: false }));
       toast({
-        title: "AI Suggestion Applied",
-        description: `${suggestion.algorithm} has been selected.`,
+        title: "Suggestion IA appliquée",
+        description: `${suggestion.algorithm} a été sélectionné.`,
       });
     }
   }, [toast]);
 
   const handleEmbed = () => {
     if (!state.carrierFile || !state.message || !state.selectedAlgorithmId) {
-      toast({ variant: "destructive", title: "Error", description: "Please select a file, enter a message, and choose an algorithm." });
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier, saisir un message et choisir un algorithme." });
       return;
     }
     setState(prev => ({ ...prev, isEmbedding: true }));
-    // Simulate embedding process
     setTimeout(() => {
       setState(prev => ({ ...prev, isEmbedding: false, isMessageEmbedded: true }));
-      toast({ title: "Success (Simulated)", description: "Message embedded into the carrier file." });
+      toast({ title: "Succès (Simulé)", description: "Message intégré dans le fichier porteur." });
     }, 1500);
   };
 
   const handleExport = () => {
     if (!state.carrierFile || !state.isMessageEmbedded) {
-      toast({ variant: "destructive", title: "Error", description: "No embedded message to export or file missing." });
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun message intégré à exporter ou fichier manquant." });
       return;
     }
     setState(prev => ({ ...prev, isExporting: true }));
-    // Simulate export process
     setTimeout(() => {
-      // In a real app, this would be the steganographically modified file
       const url = URL.createObjectURL(state.carrierFile!);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `steg_${state.fileName}`; // Add a prefix to the downloaded file
+      a.download = `steg_${state.fileName}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setState(prev => ({ ...prev, isExporting: false }));
-      toast({ title: "Exported (Simulated)", description: `File ${state.fileName} downloaded.` });
+      toast({ title: "Exporté (Simulé)", description: `Fichier ${state.fileName} téléchargé.` });
     }, 1500);
   };
   
-  // Cleanup object URL on unmount or when file changes
   useEffect(() => {
     const currentPreviewUrl = state.filePreviewUrl;
     return () => {
@@ -119,16 +116,37 @@ export default function StegEnginePage() {
   const isExportPossible = !!state.carrierFile && state.isMessageEmbedded;
 
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl md:text-6xl">
-          Hide Your Secrets in Plain Sight
-        </h1>
-        <p className="mt-3 max-w-md mx-auto text-base text-muted-foreground sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-          Use modern steganography techniques to embed messages within your files. Secure, simple, and smart with Steg'Engine's AI-powered algorithm suggestions.
-        </p>
+    <div className="space-y-12">
+      {/* Hero Section adapted from HTML example */}
+      <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
+        <div className="flex-shrink-0">
+          {/* Ask user to place 'stegengine_hero.svg' in /public or use a placeholder */}
+          <Image 
+            src="/stegengine_hero.svg" 
+            alt="Steg'Engine Logo Hero" 
+            width={192}  /* Corresponds to h-48 */
+            height={192} /* Corresponds to h-48 */
+            className="h-32 w-32 md:h-48 md:w-48 object-contain"
+            data-ai-hint="abstract geometric"
+            onError={(e) => {
+              // Fallback to a placeholder if the primary logo isn't found
+              (e.target as HTMLImageElement).onerror = null; 
+              (e.target as HTMLImageElement).src = 'https://placehold.co/192x192.png';
+            }}
+          />
+        </div>
+        <div className="flex-grow">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+            Bienvenue sur Steg'Engine
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto md:mx-0">
+            Votre boîte à outils complète pour les opérations de stéganographie. Choisissez parmi notre variété d'outils 
+            pour cacher et extraire des données en utilisant différentes techniques.
+          </p>
+        </div>
       </div>
 
+      {/* Existing 3-column tool layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-8">
            <FileUploadCard
@@ -157,6 +175,9 @@ export default function StegEnginePage() {
           />
         </div>
       </div>
+
+      {/* New "Why Choose Us" Section */}
+      <WhyChooseUsSection />
     </div>
   );
 }
