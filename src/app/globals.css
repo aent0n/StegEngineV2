@@ -9,7 +9,7 @@ body {
 @layer base {
   :root {
     --background: 200 100% 97%; /* Very light blue */
-    --foreground: 210 50% 25%; /* Darkest blue from logo 'S' */
+    --foreground: 210 50% 25%; /* Darkest blue */
 
     --card: 0 0% 100%; /* White cards for contrast */
     --card-foreground: 210 50% 25%; /* Darkest blue for card text */
@@ -51,8 +51,8 @@ body {
     --chart-1: 198 67% 53%; /* Complementary blue */
     --chart-2: 28 79% 62%;  /* Complementary orange/tan */
     --chart-3: 210 45% 70%; /* Lighter shade of primary */
-    --chart-4: 43 74% 66%;  /* Existing, or adjust if needed */
-    --chart-5: 27 87% 67%;  /* Existing, or adjust if needed */
+    --chart-4: 43 74% 66%; 
+    --chart-5: 27 87% 67%;
   }
 
   .dark {
