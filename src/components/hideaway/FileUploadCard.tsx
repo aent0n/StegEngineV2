@@ -36,7 +36,7 @@ export default function FileUploadCard({
   onMessageChange,
 }: FileUploadCardProps) {
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
         <CardTitle className="text-xl">Fichier Porteur & Message Secret</CardTitle>
         <CardDescription>Téléchargez le fichier dans lequel cacher votre message, et saisissez votre message secret.</CardDescription>

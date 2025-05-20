@@ -120,16 +120,14 @@ export default function StegEnginePage() {
       {/* Hero Section adapted from HTML example */}
       <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
         <div className="flex-shrink-0">
-          {/* Ask user to place 'stegengine_hero.svg' in /public or use a placeholder */}
           <Image 
             src="/stegengine_hero.svg" 
-            alt="Steg'Engine Logo Hero" 
-            width={192}  /* Corresponds to h-48 */
-            height={192} /* Corresponds to h-48 */
+            alt="Logo Steg'Engine Hero" 
+            width={192}
+            height={192}
             className="h-32 w-32 md:h-48 md:w-48 object-contain"
             data-ai-hint="abstract geometric"
             onError={(e) => {
-              // Fallback to a placeholder if the primary logo isn't found
               (e.target as HTMLImageElement).onerror = null; 
               (e.target as HTMLImageElement).src = 'https://placehold.co/192x192.png';
             }}
@@ -176,7 +174,7 @@ export default function StegEnginePage() {
         </div>
       </div>
 
-      {/* New "Why Choose Us" Section */}
+      {/* "Why Choose Us" Section */}
       <WhyChooseUsSection />
     </div>
   );

@@ -36,7 +36,7 @@ export default function AlgorithmActionsCard({
   const selectedAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithmId);
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
         <CardTitle className="text-xl">Algorithme & Actions</CardTitle>
         <CardDescription>Choisissez un algorithme et effectuez des opérations de stéganographie.</CardDescription>

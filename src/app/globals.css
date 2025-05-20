@@ -57,6 +57,7 @@ body {
 
   .dark {
     /* Keeping dark theme distinct for now, can be aligned later if needed */
+    /* For footer: bg-gray-800 text-white equivalent */
     --background: 220 10% 10%; /* Dark gray */
     --foreground: 220 15% 85%; /* Light gray */
 

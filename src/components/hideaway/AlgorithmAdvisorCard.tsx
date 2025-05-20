@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-// Input component is not used here, Textarea is sufficient
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -59,7 +58,7 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
       };
       const result = await getAiSuggestion(advisorInput);
       setSuggestion(result);
-      onSuggestion(result); // Pass suggestion to parent
+      onSuggestion(result); 
       toast({
         title: "Suggestion IA Reçue",
         description: `Algorithme : ${result.algorithm}`,
@@ -77,7 +76,7 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2"><Wand2 className="text-accent" /> Conseiller d'Algorithme IA</CardTitle>
         <CardDescription>Laissez notre IA suggérer le meilleur algorithme pour vos besoins en fonction du type de fichier et du contenu du message, parmi ceux disponibles dans l'outil.</CardDescription>
@@ -139,8 +138,8 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               Obtenir une Suggestion
             </Button>
             {suggestion && !isLoading && (
-              <Alert variant="default" className="bg-secondary/10 border-secondary/50"> {/* Adjusted background and border to be less prominent like accent but lighter */}
-                <Sparkles className="h-5 w-5 text-primary" /> {/* Changed icon color to primary */}
+              <Alert variant="default" className="bg-secondary/30 border-secondary/60">
+                <Sparkles className="h-5 w-5 text-primary" />
                 <AlertTitle className="font-semibold text-foreground">Suggestion IA :</AlertTitle>
                 <AlertDescription className="text-foreground space-y-1">
                   <p><strong>Algorithme :</strong> {suggestion.algorithm}</p>
@@ -154,4 +153,3 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
     </Card>
   );
 }
-
