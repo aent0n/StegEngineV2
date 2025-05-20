@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress"; // Import Progress
+import { Progress } from "@/components/ui/progress";
 import { FileQuestion, Image as ImageIconLucide, Music, Video, FileText as FileTextIcon, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { OperationMode, CapacityInfo } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface FileUploadCardProps {
   carrierFile: File | null;
@@ -100,15 +101,28 @@ export default function FileUploadCard({
                     {operationMode === 'embed' && (
                       <>
                         <p className="mt-1">
-                          Message : {messageBytes} octets / Capacité max : {capacityInfo.capacityBytes} octets
+                          Message : {messageBytes} octets ({percentageUsed.toFixed(1)}%) / Capacité max : {capacityInfo.capacityBytes} octets
                         </p>
-                        <Progress 
-                          value={percentageUsed} 
-                          className="w-full h-2.5 mt-1" 
-                          aria-label={`Espace utilisé ${percentageUsed.toFixed(0)}%`}
-                        />
+                        <div className="relative w-full mt-2 mb-3"> {/* Increased mb for marker */}
+                          <Progress 
+                            value={percentageUsed} 
+                            className="w-full h-2.5" 
+                            aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
+                          />
+                          {messageBytes > 0 && capacityInfo.capacityBytes > 0 && percentageUsed <= 100 && (
+                            <div
+                              className="absolute h-4 w-[2px] bg-accent"
+                              style={{
+                                left: `calc(${percentageUsed}% - 1px)`, // Center the 2px marker
+                                bottom: "-10px", // Position below the progress bar
+                                transform: percentageUsed > 99 ? 'translateX(-2px)' : (percentageUsed < 1 ? 'translateX(0px)' : 'translateX(-1px)'), // Adjust to keep within bounds
+                              }}
+                              title={`Utilisation: ${percentageUsed.toFixed(1)}%`}
+                            />
+                          )}
+                        </div>
                         {messageBytes > capacityInfo.capacityBytes && (
-                            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                            <p className="text-xs text-red-500 flex items-center gap-1 mt-2"> {/* Adjusted mt */}
                                 <AlertCircle size={14} />
                                 Le message est trop long pour la capacité de l'image.
                             </p>
@@ -116,7 +130,7 @@ export default function FileUploadCard({
                       </>
                     )}
                      {operationMode === 'extract' && (
-                       <p className="mt-1">Capacité estimée : {capacityInfo.capacityBytes} octets</p>
+                       <p className="mt-1">Capacité stéganographique estimée : {capacityInfo.capacityBytes} octets</p>
                      )}
                   </div>
                 )}
@@ -137,10 +151,10 @@ export default function FileUploadCard({
               className="text-base"
               aria-label="Saisie du message secret à cacher"
             />
-            {/* Warning for message too long is now integrated with capacity display */}
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
