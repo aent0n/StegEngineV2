@@ -5,11 +5,12 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from "react";
 import FileUploadCard from "@/components/hideaway/FileUploadCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
-import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
+// AlgorithmAdvisorCard is now on the main page
+// import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
 import type { StegToolState, OperationMode, SteganographyAlgorithm } from "@/types";
 import { mockAlgorithms, fileTypeOptions } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
+// import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor'; // No longer needed here
 
 const imageAlgorithms = mockAlgorithms.filter(algo => algo.supportedFileTypes.includes('image'));
 
@@ -19,11 +20,11 @@ const initialState: StegToolState = {
   filePreviewUrl: null,
   messageToEmbed: "",
   extractedMessage: null,
-  selectedAlgorithmId: null,
-  aiSuggestion: null,
-  isProcessing: false, // Covers embedding and extracting
-  isExporting: false, // Covers exporting stego file and saving extracted text
-  isAdvisorLoading: false,
+  selectedAlgorithmId: imageAlgorithms.length > 0 ? imageAlgorithms[0].id : null, // Default to first image algorithm
+  aiSuggestion: null, // AI suggestion state is no longer managed here
+  isProcessing: false,
+  isExporting: false, 
+  isAdvisorLoading: false, // No longer managed here
   operationMode: 'embed',
   statusMessage: null,
 };
@@ -41,7 +42,6 @@ export default function ImageStegPage() {
     if (file) {
       if (!file.type.startsWith('image/')) {
         toast({ variant: "destructive", title: "Type de fichier non supporté", description: "Veuillez sélectionner un fichier image (PNG, JPG)." });
-        // Clear the input
         event.target.value = ""; 
         setState(prev => ({
           ...prev,
@@ -58,7 +58,7 @@ export default function ImageStegPage() {
         fileName: file.name,
         filePreviewUrl,
         statusMessage: null,
-        extractedMessage: null, // Reset extracted message on new file
+        extractedMessage: null, 
       }));
     } else {
       setState(prev => ({
@@ -84,18 +84,11 @@ export default function ImageStegPage() {
     setState(prev => ({ ...prev, operationMode: mode, statusMessage: null, extractedMessage: null }));
   };
 
-  const handleAiSuggestion = useCallback((suggestion: AlgorithmAdvisorOutput) => {
-    setState(prev => ({ ...prev, aiSuggestion: suggestion, isAdvisorLoading: false }));
-    const suggestedAlgo = imageAlgorithms.find(algo => algo.name.toLowerCase().includes(suggestion.algorithm.toLowerCase().split(" ")[0]));
-    if (suggestedAlgo) {
-      setState(prev => ({ ...prev, selectedAlgorithmId: suggestedAlgo.id }));
-      toast({
-        title: "Suggestion IA appliquée",
-        description: `${suggestion.algorithm} a été sélectionné.`,
-      });
-    }
-  }, [toast]);
-  
+  // AI Suggestion is handled on the main page now.
+  // If specific interaction is needed on this page based on a global AI suggestion,
+  // it would require a different state management approach (e.g., Context API or Zustand).
+  // For now, this page operates independently of the AI advisor on the home page.
+
   const handleEmbed = () => {
     if (!state.carrierFile || !state.messageToEmbed || !state.selectedAlgorithmId) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier, saisir un message et choisir un algorithme." });
@@ -109,7 +102,7 @@ export default function ImageStegPage() {
   };
 
   const handleExportStegoFile = () => {
-    if (!state.carrierFile || state.statusMessage?.text !== "Message intégré dans le fichier (simulé).") { // Check specific success message
+    if (!state.carrierFile || state.statusMessage?.text !== "Message intégré dans le fichier (simulé).") {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun message intégré à exporter ou fichier manquant." });
       return;
     }
@@ -195,7 +188,7 @@ export default function ImageStegPage() {
         
         <div className="space-y-8">
           <AlgorithmActionsCard
-            algorithms={imageAlgorithms}
+            algorithms={imageAlgorithms} // Only image algorithms for this page
             selectedAlgorithmId={state.selectedAlgorithmId}
             onAlgorithmChange={handleAlgorithmChange}
             operationMode={state.operationMode}
@@ -212,12 +205,7 @@ export default function ImageStegPage() {
             isSaveExtractedMessagePossible={isSaveExtractedMessagePossible}
             statusMessage={state.statusMessage}
           />
-          <AlgorithmAdvisorCard 
-            onSuggestion={handleAiSuggestion} 
-            // Pass context that this is for images, so advisor can refine if needed
-            // For now, the advisor card still has its own fileType selector
-            // but we're filtering algorithms passed to AlgorithmActionsCard
-          />
+          {/* AlgorithmAdvisorCard removed from here */}
         </div>
       </div>
     </div>

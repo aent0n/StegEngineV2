@@ -4,6 +4,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import WhyChooseUsSection from "@/components/hideaway/WhyChooseUsSection";
+import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
+import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, Music, FileText, FileQuestion, Layers, ArrowRight } from "lucide-react";
@@ -20,33 +22,41 @@ const tools = [
     name: "Stéganographie Audio",
     description: "Intégrez des données dans des fichiers audio (MP3, WAV).",
     icon: <Music className="w-10 h-10 text-primary" />,
-    href: "#",
-    status: "upcoming",
+    href: "/audio-steg",
+    status: "available", // Changed from upcoming
   },
   {
     name: "Stéganographie de Texte",
     description: "Dissimulez des messages dans des fichiers texte.",
     icon: <FileText className="w-10 h-10 text-primary" />,
-    href: "#",
-    status: "upcoming",
+    href: "/text-steg",
+    status: "available", // Changed from upcoming
   },
   {
     name: "Stéganographie PDF",
     description: "Cachez des informations dans des documents PDF.",
-    icon: <FileQuestion className="w-10 h-10 text-primary" />, // Using FileQuestion as a generic placeholder
-    href: "#",
-    status: "upcoming",
+    icon: <FileQuestion className="w-10 h-10 text-primary" />,
+    href: "/pdf-steg",
+    status: "available", // Changed from upcoming
   },
   {
     name: "Traitement par Lots",
     description: "Traitez plusieurs fichiers à la fois.",
     icon: <Layers className="w-10 h-10 text-primary" />,
-    href: "#",
-    status: "upcoming",
+    href: "/batch-processing",
+    status: "available", // Changed from upcoming
   },
 ];
 
 export default function HomePage() {
+  // Minimal handler for AI suggestion on the homepage
+  // The card itself displays the suggestion and shows a toast
+  const handleAiSuggestionHomepage = (suggestion: AlgorithmAdvisorOutput) => {
+    console.log("AI Suggestion on homepage:", suggestion);
+    // Potentially show a global toast or notification if needed,
+    // but AlgorithmAdvisorCard already shows its own toast.
+  };
+
   return (
     <div className="space-y-12">
       {/* Hero Section */}
@@ -58,7 +68,7 @@ export default function HomePage() {
             width={192}
             height={192}
             className="h-32 w-32 md:h-48 md:w-48 object-contain"
-            data-ai-hint="abstract geometric"
+            data-ai-hint="abstract geometric engine"
             onError={(e) => {
               (e.target as HTMLImageElement).onerror = null;
               (e.target as HTMLImageElement).src = 'https://placehold.co/192x192.png';
@@ -75,6 +85,15 @@ export default function HomePage() {
           </p>
         </div>
       </div>
+
+      {/* AI Algorithm Advisor Section */}
+      <section className="py-8">
+        <h2 className="text-3xl font-bold text-center text-foreground mb-10">Conseiller d'Algorithme IA</h2>
+        <div className="max-w-2xl mx-auto">
+          <AlgorithmAdvisorCard onSuggestion={handleAiSuggestionHomepage} />
+        </div>
+      </section>
+      
 
       {/* Tools Grid Section */}
       <section className="py-8">
