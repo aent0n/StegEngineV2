@@ -6,17 +6,17 @@ export interface SteganographyAlgorithm {
   name: string;
   description: string;
   supportedFileTypes: string[]; // e.g., ['image/png', 'audio/wav', 'text/plain']
-  isMetadataBased?: boolean; // Flag for metadata algorithms
-  isTextBased?: boolean; // Flag for text-based algorithms (uses textarea instead of file upload)
+  isMetadataBased?: boolean; 
+  isTextBased?: boolean; 
 }
 
 export type OperationMode = 'embed' | 'extract';
 
 export interface CapacityInfo {
   capacityBytes: number;
-  width: number; // Peut être 0 si non applicable (ex: audio, text)
-  height: number; // Peut être 0 si non applicable (ex: audio, text)
-  isEstimate?: boolean; // True if the capacity is a general estimate (for metadata algos)
+  width: number; 
+  height: number; 
+  isEstimate?: boolean; 
 }
 
 export interface StegToolState {
@@ -39,9 +39,9 @@ export interface StegToolState {
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
   capacityInfo: CapacityInfo | null;
 
-  // For text-based tools
   coverText?: string;
   stegoText?: string;
+  isGeneratingCoverText?: boolean; // Nouvel état pour le chargement de l'IA texte
 }
 
 export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf' | 'video';
@@ -100,5 +100,6 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   whitespaceTextAlgorithm,
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
-  // { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
 ];
+
+    

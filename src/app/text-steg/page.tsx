@@ -13,14 +13,63 @@ import {
   extractMessageFromText, 
   getTextCapacityInfo 
 } from '@/lib/textSteganography';
+import { generateCoverText, type CoverTextGeneratorInput } from '@/ai/flows/cover-text-generator'; // Importation du nouveau flux
 
 const availableAlgorithms: SteganographyAlgorithm[] = [whitespaceTextAlgorithm]; 
 
+const initialCoverText = `Ceci est un exemple de texte porteur pour la stéganographie.
+Chaque ligne de ce texte peut potentiellement dissimuler une information.
+Le principe est simple : un bit est encodé par la présence
+d'un ou deux espaces à la fin de la ligne.
+Cette technique est discrète mais sa capacité est limitée.
+Plus le texte porteur est long, plus le message caché peut l'être.
+Il est important que le texte semble naturel.
+Les paragraphes aident à structurer le contenu.
+Veillez à ne pas utiliser de lignes trop courtes.
+Cela pourrait rendre la détection plus aisée.
+Pensez également à la sémantique du texte.
+Un texte incohérent pourrait attirer l'attention.
+La stéganographie textuelle est un art subtil.
+Elle requiert discrétion et ingéniosité.
+Ce texte a été généré pour servir d'exemple.
+Il contient suffisamment de lignes pour un message court.
+N'hésitez pas à le remplacer par votre propre contenu.
+Ou utilisez l'assistant IA pour en générer un nouveau.
+L'objectif est de fournir un canevas de base.
+Les possibilités sont nombreuses et variées.
+L'exploration de différentes méthodes est encouragée.
+La sécurité des données est primordiale.
+Choisissez vos techniques avec soin.
+Considérez l'impact sur la taille et la discrétion.
+La stéganographie n'est pas une science exacte.
+Elle évolue constamment avec les technologies.
+Assurez-vous de bien comprendre les implications.
+Un message bien caché est un message bien protégé.
+La longueur du message est stockée au début.
+Cela permet à l'extracteur de savoir quand s'arrêter.
+Ce mécanisme est crucial pour la fiabilité.
+Sans cela, l'extraction serait aléatoire.
+La gestion des erreurs est aussi un aspect important.
+Que se passe-t-il si le texte est altéré ?
+Ce sont des questions à considérer.
+Pour l'instant, concentrons-nous sur l'intégration.
+Le message secret attend d'être dissimulé.
+Le texte porteur est prêt à le recevoir.
+L'opération peut commencer dès que vous le souhaitez.
+Vérifiez bien la capacité avant de procéder.
+Un message trop long ne pourra pas être intégré.
+Le système vous avertira si c'est le cas.
+Soyez attentif aux indicateurs fournis.
+Ils sont là pour vous guider.
+Bonne stéganographie à tous !
+Ceci est la quarante-neuvième ligne.
+Et voici la cinquantième ligne pour faire bonne mesure.`;
+
 const initialState: StegToolState = {
-  carrierFile: null, // Not used for text tool
-  fileName: null, // Used for exported stego text file name
+  carrierFile: null,
+  fileName: null, 
   filePreviewUrl: null, 
-  stegoFileDataUri: null, // Not directly used, stegoText holds the content
+  stegoFileDataUri: null,
 
   messageToEmbed: "",
   extractedMessage: null,
@@ -32,8 +81,9 @@ const initialState: StegToolState = {
   operationMode: 'embed',
   statusMessage: null,
   capacityInfo: null,
-  coverText: "Ceci est un exemple de texte porteur.\nChaque ligne peut cacher un bit d'information.\nEssayez d'y cacher un message secret !\nUtilisez plusieurs lignes pour plus de capacité.\nLes espaces en fin de ligne seront utilisés discrètement.\nAssurez-vous que votre message n'est pas trop long.\nLa stéganographie textuelle peut être subtile.\nFin du texte d'exemple.",
+  coverText: initialCoverText,
   stegoText: null,
+  isGeneratingCoverText: false, // Nouvel état pour le chargement de l'IA
 };
 
 export default function TextStegPage() {
@@ -48,7 +98,8 @@ export default function TextStegPage() {
         const info = await getTextCapacityInfo(text);
         const capacityText = `Capacité pour ${whitespaceTextAlgorithm.name}: ${info.capacityBytes} octets (${text.split('\n').length} lignes).`;
         setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
-      } catch (error: any) {
+      } catch (error: any)
+{
         toast({ variant: "destructive", title: "Erreur de Capacité Texte", description: error.message });
         setState(prev => ({ ...prev, capacityInfo: null, statusMessage: {type: 'error', text: error.message } }));
       }
@@ -62,7 +113,7 @@ export default function TextStegPage() {
       updateCapacity(state.coverText, state.selectedAlgorithmId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.coverText, state.selectedAlgorithmId]); // updateCapacity is memoized
+  }, [state.coverText, state.selectedAlgorithmId, updateCapacity]);
 
   const handleCoverTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newCoverText = event.target.value;
@@ -71,7 +122,7 @@ export default function TextStegPage() {
         coverText: newCoverText, 
         statusMessage: null, 
         extractedMessage: null, 
-        stegoText: null // Reset stego text if cover text changes
+        stegoText: null 
     }));
   };
 
@@ -86,7 +137,7 @@ export default function TextStegPage() {
         statusMessage: null, 
         extractedMessage: null, 
         stegoText: null,
-        capacityInfo: null // Reset capacity on algo change
+        capacityInfo: null 
     }));
     if (state.coverText) {
         updateCapacity(state.coverText, algorithmId);
@@ -168,7 +219,7 @@ export default function TextStegPage() {
   };
 
   const handleExtract = async () => {
-    if (!state.coverText || !state.selectedAlgorithmId || !selectedAlgorithm) { // coverText holds the stego text in extract mode
+    if (!state.coverText || !state.selectedAlgorithmId || !selectedAlgorithm) { 
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez fournir un texte stéganographié et choisir un algorithme." });
       return;
     }
@@ -223,11 +274,32 @@ export default function TextStegPage() {
     }
   };
 
+  const handleGenerateAICoverText = async (topic?: string) => {
+    setState(prev => ({ ...prev, isGeneratingCoverText: true, statusMessage: {type: 'info', text:"Génération du texte porteur par l'IA..."} }));
+    try {
+      const input: CoverTextGeneratorInput = { topic: topic || undefined };
+      const result = await generateCoverText(input);
+      if (result && result.generatedText) {
+        setState(prev => ({ ...prev, coverText: result.generatedText, stegoText: null, extractedMessage: null, statusMessage: {type: 'success', text:"Texte porteur généré par l'IA."}}));
+        toast({title: "Succès", description: "Texte porteur généré par l'IA."})
+      } else {
+        throw new Error("La réponse de l'IA ne contient pas de texte généré.");
+      }
+    } catch (error: any) {
+      console.error("Erreur lors de la génération du texte porteur IA:", error);
+      setState(prev => ({ ...prev, statusMessage: {type: 'error', text:`Erreur IA: ${error.message}`} }));
+      toast({variant: "destructive", title: "Erreur IA", description: `Impossible de générer le texte porteur: ${error.message}`});
+    } finally {
+      setState(prev => ({ ...prev, isGeneratingCoverText: false }));
+    }
+  };
+
+
   const messageBytesForEmbed = state.messageToEmbed ? new TextEncoder().encode(state.messageToEmbed).length : 0;
   const isCapacityExceeded = state.capacityInfo && !state.capacityInfo.isEstimate && (messageBytesForEmbed > state.capacityInfo.capacityBytes);
   const isEmbedPossible = !!state.coverText && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && !isCapacityExceeded;
   const isExportStegoFilePossible = !!state.stegoText;
-  const isExtractPossible = !!state.coverText && !!state.selectedAlgorithmId; // coverText holds stego text in extract mode
+  const isExtractPossible = !!state.coverText && !!state.selectedAlgorithmId; 
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
   const isCopyStegoTextPossible = !!state.stegoText && state.stegoText.length > 0;
 
@@ -245,6 +317,8 @@ export default function TextStegPage() {
             operationMode={state.operationMode}
             capacityInfo={state.capacityInfo}
             statusMessage={state.statusMessage}
+            onGenerateAICoverText={handleGenerateAICoverText}
+            isGeneratingCoverText={state.isGeneratingCoverText}
           />
         </div>
         
@@ -265,14 +339,16 @@ export default function TextStegPage() {
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
             isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} 
-            statusMessage={state.statusMessage} // Pass status message also to AlgoActionsCard for unified feedback if needed
+            statusMessage={state.statusMessage} 
             extractedMessage={state.extractedMessage}
-            isTextTool={true} // Indicate this is for the text tool
-            onCopyStegoText={handleCopyStegoText} // New prop
-            isCopyStegoTextPossible={isCopyStegoTextPossible} // New prop
+            isTextTool={true} 
+            onCopyStegoText={handleCopyStegoText} 
+            isCopyStegoTextPossible={isCopyStegoTextPossible} 
           />
         </div>
       </div>
     </div>
   );
 }
+
+    

@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, FileText } from "lucide-react";
+import { AlertCircle, FileText, Sparkles, Loader2 } from "lucide-react";
 import type { OperationMode, CapacityInfo } from '@/types';
+import { Button } from '@/components/ui/button';
 
 interface TextInteractionCardProps {
   coverText: string;
@@ -16,11 +17,13 @@ interface TextInteractionCardProps {
   messageToEmbed: string;
   onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
-  stegoText: string | null; // Used to display stego text after embedding
+  stegoText: string | null; 
   
   operationMode: OperationMode;
   capacityInfo: CapacityInfo | null;
-  statusMessage?: { type: 'success' | 'error' | 'info', text: string } | null; // Optional status message
+  statusMessage?: { type: 'success' | 'error' | 'info', text: string } | null;
+  onGenerateAICoverText: (topic?: string) => Promise<void>;
+  isGeneratingCoverText?: boolean;
 }
 
 export default function TextInteractionCard({
@@ -32,6 +35,8 @@ export default function TextInteractionCard({
   operationMode,
   capacityInfo,
   statusMessage,
+  onGenerateAICoverText,
+  isGeneratingCoverText,
 }: TextInteractionCardProps) {
   
   const messageBytes = operationMode === 'embed' && messageToEmbed ? new TextEncoder().encode(messageToEmbed).length : 0;
@@ -39,7 +44,7 @@ export default function TextInteractionCard({
     ? Math.min(100, Math.max(0, (messageBytes / capacityInfo.capacityBytes) * 100)) 
     : 0;
 
-  const displayCapacityInfo = capacityInfo; // Always display if available
+  const displayCapacityInfo = capacityInfo; 
   const showProgressBar = operationMode === 'embed' && capacityInfo && !capacityInfo.isEstimate && capacityInfo.capacityBytes > 0;
 
   return (
@@ -50,27 +55,41 @@ export default function TextInteractionCard({
         </CardTitle>
         <CardDescription>
           {operationMode === 'embed' 
-            ? "Saisissez le texte porteur et le message à cacher."
+            ? "Saisissez le texte porteur et le message à cacher. Utilisez l'IA pour générer un texte porteur si besoin."
             : "Saisissez le texte contenant un message caché pour l'extraire."
           }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* Textarea for Cover Text (Embed mode) or Stego Text (Extract mode) */}
         <div className="space-y-2">
           <Label htmlFor="coverOrStegoText" className="text-base">
             {operationMode === 'embed' ? '1. Texte Porteur' : '1. Texte Stéganographié à Analyser'}
           </Label>
           <Textarea
             id="coverOrStegoText"
-            value={operationMode === 'embed' ? coverText : stegoText || coverText} // In extract mode, user pastes stego text here
-            onChange={onCoverTextChange} // This will update coverText, which is used as stego input in extract mode
+            value={operationMode === 'embed' ? coverText : stegoText || coverText} 
+            onChange={onCoverTextChange} 
             placeholder={operationMode === 'embed' ? "Collez votre texte porteur ici..." : "Collez le texte stéganographié ici..."}
-            rows={8}
+            rows={operationMode === 'embed' ? 8 : 12} // More rows for extract as message is not shown here
             className="text-base"
             aria-label={operationMode === 'embed' ? 'Texte porteur' : 'Texte stéganographié'}
           />
+           {operationMode === 'embed' && (
+             <Button 
+                onClick={() => onGenerateAICoverText()} 
+                disabled={isGeneratingCoverText}
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-2"
+            >
+                {isGeneratingCoverText ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Génération IA...</>
+                ) : (
+                    <><Sparkles className="mr-2 h-4 w-4" />Générer Texte Porteur (IA)</>
+                )}
+             </Button>
+           )}
           {capacityInfo && displayCapacityInfo && (
             <div className="mt-2 p-3 border rounded-lg bg-secondary/50 text-sm w-full">
               <div className="font-medium text-secondary-foreground flex items-center gap-2">
@@ -92,7 +111,7 @@ export default function TextInteractionCard({
                         className="w-full h-2.5" 
                         aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
                       />
-                      <p className="text-xs text-center mt-1">
+                       <p className="text-xs text-center mt-1">
                         Utilisation : {percentageUsed.toFixed(1)}%
                       </p>
                     </div>
@@ -114,7 +133,6 @@ export default function TextInteractionCard({
           )}
         </div>
 
-        {/* Textarea for Secret Message (Embed mode only) */}
         {operationMode === 'embed' && (
           <div className="space-y-2">
             <Label htmlFor="secretMessage" className="text-base">2. Votre Message Secret à Cacher</Label>
@@ -130,7 +148,6 @@ export default function TextInteractionCard({
           </div>
         )}
 
-        {/* Display Area for Stego Text (Embed mode, after embedding) */}
         {operationMode === 'embed' && stegoText && (
           <div className="space-y-2">
             <Label htmlFor="stegoResultText" className="text-base">Texte Stéganographié Résultant :</Label>
@@ -149,7 +166,7 @@ export default function TextInteractionCard({
             statusMessage.type === 'success' ? 'text-green-600 dark:text-green-400' :
             statusMessage.type === 'error' ? 'text-red-600 dark:text-red-400' :
             'text-blue-600 dark:text-blue-400' 
-          } text-center`}>
+          } text-center pt-2`}>
             {statusMessage.text}
           </p>
         )}
@@ -157,3 +174,5 @@ export default function TextInteractionCard({
     </Card>
   );
 }
+
+    
