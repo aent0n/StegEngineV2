@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Removed TabsContent as it's not directly used here for tab panels
 import type { SteganographyAlgorithm, OperationMode } from "@/types";
-import { Download, ShieldCheck, Shuffle, Search, Save, Loader2 } from "lucide-react";
+import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2 } from "lucide-react"; // Added CopyIcon, removed Save
 
 interface AlgorithmActionsCardProps {
   algorithms: SteganographyAlgorithm[];
@@ -20,17 +20,18 @@ interface AlgorithmActionsCardProps {
   onEmbed: () => void;
   onExportStegoFile: () => void;
   onExtract: () => void;
-  onSaveExtractedMessage: () => void;
+  onCopyExtractedMessage: () => void; // Changed from onSaveExtractedMessage
 
-  isProcessing: boolean; // Covers embedding and extracting
-  isExporting: boolean; // Covers exporting stego file and saving extracted text
+  isProcessing: boolean;
+  isExporting: boolean; // Still used for stego file export
 
   isEmbedPossible: boolean;
   isExportStegoFilePossible: boolean;
   isExtractPossible: boolean;
-  isSaveExtractedMessagePossible: boolean;
+  isCopyExtractedMessagePossible: boolean; // Changed from isSaveExtractedMessagePossible
 
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
+  extractedMessage: string | null; // To display the extracted message
 }
 
 export default function AlgorithmActionsCard({
@@ -42,14 +43,15 @@ export default function AlgorithmActionsCard({
   onEmbed,
   onExportStegoFile,
   onExtract,
-  onSaveExtractedMessage,
+  onCopyExtractedMessage, // Updated prop name
   isProcessing,
   isExporting,
   isEmbedPossible,
   isExportStegoFilePossible,
   isExtractPossible,
-  isSaveExtractedMessagePossible,
+  isCopyExtractedMessagePossible, // Updated prop name
   statusMessage,
+  extractedMessage,
 }: AlgorithmActionsCardProps) {
   const selectedAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithmId);
 
@@ -125,7 +127,7 @@ export default function AlgorithmActionsCard({
         )}
 
         {operationMode === 'extract' && (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div className="space-y-4">
             <Button
               onClick={onExtract}
               disabled={!isExtractPossible || isProcessing}
@@ -139,20 +141,28 @@ export default function AlgorithmActionsCard({
                 <><Search className="mr-2 h-5 w-5" /> Extraire le Message</>
               )}
             </Button>
-            <Button
-              onClick={onSaveExtractedMessage}
-              disabled={!isSaveExtractedMessagePossible || isExporting || isProcessing}
-              variant="outline"
-              size="lg"
-              className="w-full text-base"
-              aria-label="Sauvegarder le message extrait"
-            >
-              {isExporting ? (
-                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sauvegarde...</>
-              ) : (
-                <><Save className="mr-2 h-5 w-5" /> Sauvegarder Message</>
-              )}
-            </Button>
+            
+            <div>
+              <Label htmlFor="extractedMessageDisplay" className="text-base font-medium">Message Extrait :</Label>
+              <div 
+                id="extractedMessageDisplay"
+                className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[100px] text-sm text-foreground whitespace-pre-wrap break-all"
+                aria-label="Message extrait"
+              >
+                {extractedMessage !== null && extractedMessage.length > 0 ? extractedMessage : 
+                 (isProcessing ? "Extraction en cours..." : "Le message extrait apparaîtra ici...")}
+              </div>
+              <Button
+                onClick={onCopyExtractedMessage}
+                disabled={!isCopyExtractedMessagePossible || isProcessing}
+                variant="outline"
+                size="sm" // Smaller button for copy
+                className="w-full mt-3 text-base"
+                aria-label="Copier le message extrait"
+              >
+                <CopyIcon className="mr-2 h-4 w-4" /> Copier le Message
+              </Button>
+            </div>
           </div>
         )}
         
@@ -170,3 +180,5 @@ export default function AlgorithmActionsCard({
     </Card>
   );
 }
+
+    

@@ -2,29 +2,21 @@
 "use client";
 
 import type React from 'react';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import FileUploadCard from "@/components/hideaway/FileUploadCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
-import type { StegToolState, OperationMode, SteganographyAlgorithm } from "@/types";
-import { mockAlgorithms } from "@/types"; // Assuming this will be filtered or simplified
+import type { StegToolState, OperationMode } from "@/types";
+import { lsbPngAlgorithm } from "@/types"; // Use the specific LSB PNG algorithm
 import { useToast } from "@/hooks/use-toast";
 import { embedMessageInImage, extractMessageFromImage, getCapacityInfo } from '@/lib/steganography';
 
-// For a functional LSB tool, we'll focus on one LSB algorithm for PNGs
-const lsbImageAlgorithm: SteganographyAlgorithm = {
-  id: 'lsb_image_png',
-  name: 'LSB (PNG Image)',
-  description: 'Intégration par bit de poids faible optimisée pour les images PNG.',
-  supportedFileTypes: ['image/png'],
-};
-
-const availableAlgorithms = [lsbImageAlgorithm];
+const availableAlgorithms = [lsbPngAlgorithm];
 
 const initialState: StegToolState = {
   carrierFile: null,
   fileName: null,
-  filePreviewUrl: null, // This will be the original image preview
-  stegoFileDataUri: null, // Data URI for the image with embedded message
+  filePreviewUrl: null,
+  stegoFileDataUri: null,
   messageToEmbed: "",
   extractedMessage: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
@@ -34,7 +26,7 @@ const initialState: StegToolState = {
   isAdvisorLoading: false,
   operationMode: 'embed',
   statusMessage: null,
-  capacityInfo: null, // To store { capacityBytes: number, width: number, height: number }
+  capacityInfo: null,
 };
 
 export default function ImageStegPage() {
@@ -59,10 +51,6 @@ export default function ImageStegPage() {
     if (state.filePreviewUrl) {
         URL.revokeObjectURL(state.filePreviewUrl);
     }
-    if (state.stegoFileDataUri) {
-        // Assuming stegoFileDataUri might also be an object URL if we change download logic
-        // For now, it's a data URI, so no explicit revoke needed unless it's very large and causes issues
-    }
 
     if (file) {
       if (file.type !== 'image/png') {
@@ -77,13 +65,12 @@ export default function ImageStegPage() {
         carrierFile: file,
         fileName: file.name,
         filePreviewUrl,
-        stegoFileDataUri: null, // Reset stego data if a new file is uploaded
+        stegoFileDataUri: null,
         statusMessage: null,
         extractedMessage: null, 
-        capacityInfo: null, // Reset capacity info
+        capacityInfo: null,
       }));
 
-      // Calculate and display capacity
       try {
         const info = await getCapacityInfo(file);
         setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: `Capacité: ${info.capacityBytes} octets. Dimensions: ${info.width}x${info.height}px.`} }));
@@ -110,11 +97,7 @@ export default function ImageStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessage: null,
-      // Keep stegoFileDataUri if switching to extract after embedding, 
-      // so the user can extract from what they just embedded without re-upload.
-      // Or reset it if you want a stricter flow:
-      // stegoFileDataUri: mode === 'extract' ? prev.stegoFileDataUri : null, 
+      extractedMessage: null, // Clear extracted message when switching modes
     }));
   };
 
@@ -134,7 +117,7 @@ export default function ImageStegPage() {
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        stegoFileDataUri: stegoDataUri, // Store the data URI of the image with embedded message
+        stegoFileDataUri: stegoDataUri,
         statusMessage: {type: 'success', text:"Message intégré avec succès dans le fichier."} 
       }));
       toast({ title: "Succès", description: "Message intégré dans le fichier porteur." });
@@ -145,11 +128,9 @@ export default function ImageStegPage() {
     }
   };
   
-  // Helper for textToBinary, minimal version for capacity check
   function textToBinary(text: string): string {
       return text.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join('');
   }
-
 
   const handleExportStegoFile = () => {
     if (!state.stegoFileDataUri || !state.fileName) {
@@ -158,10 +139,9 @@ export default function ImageStegPage() {
     }
     setState(prev => ({ ...prev, isExporting: true }));
     
-    // Download the stego image (data URI)
     const a = document.createElement('a');
     a.href = state.stegoFileDataUri;
-    a.download = `steg_${state.fileName}`; // Suggest a name for the downloaded file
+    a.download = `steg_${state.fileName}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -171,8 +151,6 @@ export default function ImageStegPage() {
   };
 
   const handleExtract = async () => {
-    // For extraction, the user uploads a stego-image.
-    // The `carrierFile` state should hold this stego-image.
     if (!state.carrierFile || !state.selectedAlgorithmId) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier (contenant un message) et choisir un algorithme." });
       return;
@@ -189,35 +167,27 @@ export default function ImageStegPage() {
       toast({ title: "Extraction Réussie", description: "Message extrait avec succès." });
     } catch (error: any) {
       console.error("Extract error:", error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction: ${error.message}`} }));
+      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction: ${error.message}`}, extractedMessage: '' })); // Set to empty string on error to avoid null issues
       toast({ variant: "destructive", title: "Erreur d'Extraction", description: error.message });
     }
   };
-
-  const handleSaveExtractedMessage = () => {
+  
+  const handleCopyExtractedMessage = async () => {
     if (!state.extractedMessage) {
-      toast({ variant: "destructive", title: "Erreur", description: "Aucun message extrait à sauvegarder." });
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun message extrait à copier." });
       return;
     }
-    setState(prev => ({ ...prev, isExporting: true }));
-    
-    const blob = new Blob([state.extractedMessage], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `message_extrait_${state.fileName?.split('.')[0] || 'fichier'}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    setState(prev => ({ ...prev, isExporting: false }));
-    toast({ title: "Sauvegardé", description: "Message extrait sauvegardé en .txt." });
+    try {
+      await navigator.clipboard.writeText(state.extractedMessage);
+      toast({ title: "Copié", description: "Message extrait copié dans le presse-papiers." });
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      toast({ variant: "destructive", title: "Erreur de Copie", description: "Impossible de copier le message." });
+    }
   };
   
   useEffect(() => {
     const currentPreviewUrl = state.filePreviewUrl;
-    // Clean up object URLs when component unmounts or filePreviewUrl changes
     return () => {
       if (currentPreviewUrl) {
         URL.revokeObjectURL(currentPreviewUrl);
@@ -226,9 +196,10 @@ export default function ImageStegPage() {
   }, [state.filePreviewUrl]);
 
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && (textToBinary(state.messageToEmbed).length / 8 <= state.capacityInfo.capacityBytes);
-  const isExportStegoFilePossible = !!state.stegoFileDataUri; // Check if stego image data URI is present
+  const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
-  const isSaveExtractedMessagePossible = !!state.extractedMessage;
+  const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
+
 
   return (
     <div className="space-y-8">
@@ -238,14 +209,14 @@ export default function ImageStegPage() {
            <FileUploadCard
             carrierFile={state.carrierFile}
             fileName={state.fileName}
-            filePreviewUrl={state.operationMode === 'embed' ? state.filePreviewUrl : (state.stegoFileDataUri || state.filePreviewUrl)} // Show stego image preview if available after embed
+            filePreviewUrl={state.operationMode === 'embed' ? state.filePreviewUrl : (state.stegoFileDataUri || state.filePreviewUrl)}
             onFileChange={handleFileChange}
             messageToEmbed={state.messageToEmbed}
             onMessageToEmbedChange={handleMessageToEmbedChange}
-            extractedMessage={state.extractedMessage}
             operationMode={state.operationMode}
             supportedFileTypesMessage="Fichiers PNG uniquement pour cet outil."
             capacityInfo={state.capacityInfo}
+            // extractedMessage prop is removed as it's handled in AlgorithmActionsCard
           />
         </div>
         
@@ -259,17 +230,20 @@ export default function ImageStegPage() {
             onEmbed={handleEmbed}
             onExportStegoFile={handleExportStegoFile}
             onExtract={handleExtract}
-            onSaveExtractedMessage={handleSaveExtractedMessage}
+            onCopyExtractedMessage={handleCopyExtractedMessage} // New handler
             isProcessing={state.isProcessing}
-            isExporting={state.isExporting}
+            isExporting={state.isExporting} // Still relevant for stego file export
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            isSaveExtractedMessagePossible={isSaveExtractedMessagePossible}
+            isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // New condition
             statusMessage={state.statusMessage}
+            extractedMessage={state.extractedMessage} // Pass extracted message for display
           />
         </div>
       </div>
     </div>
   );
 }
+
+    

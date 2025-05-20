@@ -6,23 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, FileText, Image as ImageIconLucide, Music, Video, FileQuestion, AlertCircle } from "lucide-react";
+import { FileQuestion, Image as ImageIconLucide, Music, Video, FileText as FileTextIcon, AlertCircle } from "lucide-react"; // Renamed FileText to avoid conflict
 import Image from "next/image";
 import type { OperationMode, CapacityInfo } from '@/types';
 
 interface FileUploadCardProps {
   carrierFile: File | null;
   fileName: string | null;
-  filePreviewUrl: string | null; // This could be original or stego image data URI for preview
+  filePreviewUrl: string | null;
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   
   messageToEmbed: string;
   onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
-  extractedMessage: string | null;
   operationMode: OperationMode;
-  supportedFileTypesMessage?: string; // Custom message for supported file types
-  capacityInfo: CapacityInfo | null; // To display image capacity
+  supportedFileTypesMessage?: string;
+  capacityInfo: CapacityInfo | null;
 }
 
 const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
@@ -30,7 +29,7 @@ const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
   if (fileType.startsWith("image/")) return <ImageIconLucide className="w-16 h-16 text-muted-foreground" />;
   if (fileType.startsWith("audio/")) return <Music className="w-16 h-16 text-muted-foreground" />;
   if (fileType.startsWith("video/")) return <Video className="w-16 h-16 text-muted-foreground" />;
-  if (fileType.startsWith("text/") || fileType === "application/pdf") return <FileText className="w-16 h-16 text-muted-foreground" />;
+  if (fileType.startsWith("text/") || fileType === "application/pdf") return <FileTextIcon className="w-16 h-16 text-muted-foreground" />;
   return <FileQuestion className="w-16 h-16 text-muted-foreground" />;
 };
 
@@ -42,7 +41,6 @@ export default function FileUploadCard({
   onFileChange,
   messageToEmbed,
   onMessageToEmbedChange,
-  extractedMessage,
   operationMode,
   supportedFileTypesMessage = "Types supportés pour cet outil : Images (PNG, JPG).",
   capacityInfo,
@@ -50,7 +48,7 @@ export default function FileUploadCard({
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
-        <CardTitle className="text-xl">Fichier Porteur {operationMode === 'extract' ? ' & Message Extrait' : '& Message Secret'}</CardTitle>
+        <CardTitle className="text-xl">Fichier Porteur {operationMode === 'embed' ? '& Message Secret' : ''}</CardTitle>
         <CardDescription>
           {operationMode === 'embed' 
             ? "Téléchargez le fichier PNG pour cacher votre message, et saisissez votre message."
@@ -64,7 +62,7 @@ export default function FileUploadCard({
           <Input
             id="carrierFile"
             type="file"
-            accept="image/png" // Restrict to PNG for functional LSB
+            accept="image/png"
             onChange={onFileChange}
             className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-3 cursor-pointer"
             aria-describedby="fileHelp"
@@ -80,7 +78,7 @@ export default function FileUploadCard({
                   alt="Aperçu du fichier" 
                   width={80} 
                   height={80} 
-                  className="rounded object-contain border" // Use object-contain
+                  className="rounded object-contain border"
                   data-ai-hint="uploaded image"
                 />
               ) : (
@@ -122,31 +120,10 @@ export default function FileUploadCard({
           </div>
         )}
 
-        {operationMode === 'extract' && (
-          <div className="space-y-2">
-            <Label htmlFor="extractedMessageDisplay" className="text-base">2. Message Extrait</Label>
-            {extractedMessage !== null ? (
-              <Textarea
-                id="extractedMessageDisplay"
-                value={extractedMessage}
-                readOnly
-                rows={5}
-                className="text-base bg-muted/50"
-                aria-label="Message extrait"
-                placeholder="Aucun message extrait pour le moment."
-              />
-            ) : (
-              <div 
-                id="extractedMessageDisplay"
-                className="p-4 border rounded-lg bg-muted/50 min-h-[100px] text-muted-foreground flex items-center justify-center text-sm"
-                aria-label="Message extrait"
-              >
-                Le message extrait apparaîtra ici...
-              </div>
-            )}
-          </div>
-        )}
+        {/* The extracted message display is now removed from this card and handled in AlgorithmActionsCard */}
       </CardContent>
     </Card>
   );
 }
+
+    
