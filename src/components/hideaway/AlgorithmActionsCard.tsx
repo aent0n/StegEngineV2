@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Removed TabsContent as it's not directly used here for tab panels
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import type { SteganographyAlgorithm, OperationMode } from "@/types";
-import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2 } from "lucide-react"; // Added CopyIcon, removed Save
+import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2, FileText as FileTextIcon } from "lucide-react";
 
 interface AlgorithmActionsCardProps {
   algorithms: SteganographyAlgorithm[];
@@ -20,18 +20,23 @@ interface AlgorithmActionsCardProps {
   onEmbed: () => void;
   onExportStegoFile: () => void;
   onExtract: () => void;
-  onCopyExtractedMessage: () => void; // Changed from onSaveExtractedMessage
+  onCopyExtractedMessage: () => void; 
 
   isProcessing: boolean;
-  isExporting: boolean; // Still used for stego file export
+  isExporting: boolean; 
 
   isEmbedPossible: boolean;
   isExportStegoFilePossible: boolean;
   isExtractPossible: boolean;
-  isCopyExtractedMessagePossible: boolean; // Changed from isSaveExtractedMessagePossible
+  isCopyExtractedMessagePossible: boolean; 
 
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
-  extractedMessage: string | null; // To display the extracted message
+  extractedMessage: string | null;
+  
+  // For Text Tool specific actions
+  isTextTool?: boolean;
+  onCopyStegoText?: () => void;
+  isCopyStegoTextPossible?: boolean;
 }
 
 export default function AlgorithmActionsCard({
@@ -43,15 +48,18 @@ export default function AlgorithmActionsCard({
   onEmbed,
   onExportStegoFile,
   onExtract,
-  onCopyExtractedMessage, // Updated prop name
+  onCopyExtractedMessage,
   isProcessing,
   isExporting,
   isEmbedPossible,
   isExportStegoFilePossible,
   isExtractPossible,
-  isCopyExtractedMessagePossible, // Updated prop name
+  isCopyExtractedMessagePossible,
   statusMessage,
   extractedMessage,
+  isTextTool = false,
+  onCopyStegoText,
+  isCopyStegoTextPossible,
 }: AlgorithmActionsCardProps) {
   const selectedAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithmId);
 
@@ -95,13 +103,13 @@ export default function AlgorithmActionsCard({
         </div>
 
         {operationMode === 'embed' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Button
               onClick={onEmbed}
               disabled={!isEmbedPossible || isProcessing}
               size="lg"
               className="w-full text-base"
-              aria-label="Intégrer le message dans le fichier"
+              aria-label="Intégrer le message"
             >
               {isProcessing ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Intégration...</>
@@ -109,18 +117,33 @@ export default function AlgorithmActionsCard({
                 <><Shuffle className="mr-2 h-5 w-5" /> Intégrer le Message</>
               )}
             </Button>
+            {isTextTool && onCopyStegoText && (
+                 <Button
+                    onClick={onCopyStegoText}
+                    disabled={!isCopyStegoTextPossible || isProcessing}
+                    variant="outline"
+                    size="lg"
+                    className="w-full text-base"
+                    aria-label="Copier le texte stéganographié"
+                >
+                    <CopyIcon className="mr-2 h-5 w-5" /> Copier Texte Stegano
+                </Button>
+            )}
             <Button
               onClick={onExportStegoFile}
               disabled={!isExportStegoFilePossible || isExporting || isProcessing}
               variant="outline"
               size="lg"
               className="w-full text-base"
-              aria-label="Exporter le fichier stéganographié"
+              aria-label="Exporter le fichier/texte stéganographié"
             >
               {isExporting ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Exportation...</>
               ) : (
-                <><Download className="mr-2 h-5 w-5" /> Exporter Fichier Stegano</>
+                <>
+                  {isTextTool ? <FileTextIcon className="mr-2 h-5 w-5" /> : <Download className="mr-2 h-5 w-5" />} 
+                  {isTextTool ? "Exporter en .txt" : "Exporter Fichier Stegano"}
+                </>
               )}
             </Button>
           </div>
@@ -133,7 +156,7 @@ export default function AlgorithmActionsCard({
               disabled={!isExtractPossible || isProcessing}
               size="lg"
               className="w-full text-base"
-              aria-label="Extraire le message du fichier"
+              aria-label="Extraire le message"
             >
               {isProcessing ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Extraction...</>
@@ -156,7 +179,7 @@ export default function AlgorithmActionsCard({
                 onClick={onCopyExtractedMessage}
                 disabled={!isCopyExtractedMessagePossible || isProcessing}
                 variant="outline"
-                size="sm" // Smaller button for copy
+                size="sm" 
                 className="w-full mt-3 text-base"
                 aria-label="Copier le message extrait"
               >
@@ -180,5 +203,3 @@ export default function AlgorithmActionsCard({
     </Card>
   );
 }
-
-    

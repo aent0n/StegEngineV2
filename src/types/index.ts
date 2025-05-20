@@ -7,44 +7,49 @@ export interface SteganographyAlgorithm {
   description: string;
   supportedFileTypes: string[]; // e.g., ['image/png', 'audio/wav', 'text/plain']
   isMetadataBased?: boolean; // Flag for metadata algorithms
+  isTextBased?: boolean; // Flag for text-based algorithms (uses textarea instead of file upload)
 }
 
 export type OperationMode = 'embed' | 'extract';
 
 export interface CapacityInfo {
   capacityBytes: number;
-  width: number; // Peut être 0 si non applicable (ex: audio)
-  height: number; // Peut être 0 si non applicable (ex: audio)
+  width: number; // Peut être 0 si non applicable (ex: audio, text)
+  height: number; // Peut être 0 si non applicable (ex: audio, text)
   isEstimate?: boolean; // True if the capacity is a general estimate (for metadata algos)
 }
 
 export interface StegToolState {
   carrierFile: File | null;
   fileName: string | null;
-  filePreviewUrl: string | null; // Preview of original uploaded file or Object URL for audio/image
-  stegoFileDataUri: string | null; // Object URL or Data URI of the image/audio with embedded message (after embed operation)
+  filePreviewUrl: string | null; 
+  stegoFileDataUri: string | null; 
   
   messageToEmbed: string; 
   extractedMessage: string | null; 
 
   selectedAlgorithmId: string | null;
-  aiSuggestion: AlgorithmAdvisorOutput | null; // Utilisé sur la page d'accueil
+  aiSuggestion: AlgorithmAdvisorOutput | null; 
   
   isProcessing: boolean; 
   isExporting: boolean; 
-  isAdvisorLoading: boolean; // Utilisé sur la page d'accueil
+  isAdvisorLoading: boolean; 
   
   operationMode: OperationMode;
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
-  capacityInfo: CapacityInfo | null; // To store capacity details
+  capacityInfo: CapacityInfo | null;
+
+  // For text-based tools
+  coverText?: string;
+  stegoText?: string;
 }
 
 export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf' | 'video';
 
 export const fileTypeOptions: { value: FileTypeOptionValue, label: string }[] = [
-  { value: 'image', label: 'Image (PNG, JPG)' },
-  { value: 'audio', label: 'Audio (WAV)' }, // Modifié: MP3 retiré
-  { value: 'text', label: 'Texte (TXT, DOCX)' },
+  { value: 'image', label: 'Image (PNG)' },
+  { value: 'audio', label: 'Audio (WAV)' },
+  { value: 'text', label: 'Texte (TXT)' },
   { value: 'pdf', label: 'Document PDF' },
   { value: 'video', label: 'Vidéo (MP4, AVI)' },
 ];
@@ -79,12 +84,21 @@ export const wavMetadataCommentAlgorithm: SteganographyAlgorithm = {
   isMetadataBased: true,
 };
 
+export const whitespaceTextAlgorithm: SteganographyAlgorithm = {
+  id: 'whitespace_text_txt',
+  name: 'Espaces Blancs (Texte .txt)',
+  description: 'Cache des données en utilisant des espaces en fin de ligne dans les fichiers texte (.txt). Un espace pour "0", deux espaces pour "1".',
+  supportedFileTypes: ['text/plain'],
+  isTextBased: true,
+};
+
 export const mockAlgorithms: SteganographyAlgorithm[] = [
   lsbPngAlgorithm,
   pngMetadataTextAlgorithm,
   lsbAudioWavAlgorithm,
   wavMetadataCommentAlgorithm,
+  whitespaceTextAlgorithm,
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
-  { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
+  // { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
 ];
