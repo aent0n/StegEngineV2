@@ -51,7 +51,7 @@ export const fileTypeOptions: { value: FileTypeOptionValue, label: string }[] = 
   { value: 'audio', label: 'Audio (WAV)' },
   { value: 'text', label: 'Texte (TXT)' },
   { value: 'pdf', label: 'Document PDF' },
-  { value: 'video', label: 'Vidéo (MP4, AVI)' },
+  { value: 'video', label: 'Vidéo (MP4, AVI)' }, // This is just for the AI advisor, no video tool yet
 ];
 
 export const lsbPngAlgorithm: SteganographyAlgorithm = { 
@@ -100,6 +100,14 @@ export const zeroWidthCharsTextAlgorithm: SteganographyAlgorithm = {
   isTextBased: true,
 };
 
+export const pdfMetadataAlgorithm: SteganographyAlgorithm = {
+  id: 'pdf_metadata_simulated',
+  name: 'Métadonnées PDF (Simulé)',
+  description: 'Dissimulation de données dans les métadonnées d\'un fichier PDF (simulation, le fichier n\'est pas modifié).',
+  supportedFileTypes: ['application/pdf'],
+  isMetadataBased: true,
+};
+
 export const mockAlgorithms: SteganographyAlgorithm[] = [
   lsbPngAlgorithm,
   pngMetadataTextAlgorithm,
@@ -107,8 +115,7 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   wavMetadataCommentAlgorithm,
   whitespaceTextAlgorithm,
   zeroWidthCharsTextAlgorithm,
+  pdfMetadataAlgorithm,
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
-  { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
+  // { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
 ];
-
-    
