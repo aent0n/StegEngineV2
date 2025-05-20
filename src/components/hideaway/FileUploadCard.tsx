@@ -101,28 +101,22 @@ export default function FileUploadCard({
                     {operationMode === 'embed' && (
                       <>
                         <p className="mt-1">
-                          Message : {messageBytes} octets ({percentageUsed.toFixed(1)}%) / Capacité max : {capacityInfo.capacityBytes} octets
+                          Message : {messageBytes} octets / Capacité max : {capacityInfo.capacityBytes} octets
                         </p>
-                        <div className="relative w-full mt-2 mb-3"> {/* Increased mb for marker */}
+                        <div className="w-full mt-1"> {/* Progress bar container */}
                           <Progress 
                             value={percentageUsed} 
                             className="w-full h-2.5" 
                             aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
                           />
-                          {messageBytes > 0 && capacityInfo.capacityBytes > 0 && percentageUsed <= 100 && (
-                            <div
-                              className="absolute h-4 w-[2px] bg-accent"
-                              style={{
-                                left: `calc(${percentageUsed}% - 1px)`, // Center the 2px marker
-                                bottom: "-10px", // Position below the progress bar
-                                transform: percentageUsed > 99 ? 'translateX(-2px)' : (percentageUsed < 1 ? 'translateX(0px)' : 'translateX(-1px)'), // Adjust to keep within bounds
-                              }}
-                              title={`Utilisation: ${percentageUsed.toFixed(1)}%`}
-                            />
-                          )}
                         </div>
+                        {messageBytes > 0 && capacityInfo.capacityBytes > 0 && percentageUsed <= 100 && (
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            Utilisation : {percentageUsed.toFixed(1)}%
+                          </p>
+                        )}
                         {messageBytes > capacityInfo.capacityBytes && (
-                            <p className="text-xs text-red-500 flex items-center gap-1 mt-2"> {/* Adjusted mt */}
+                            <p className="text-xs text-red-500 flex items-center gap-1 mt-2">
                                 <AlertCircle size={14} />
                                 Le message est trop long pour la capacité de l'image.
                             </p>
