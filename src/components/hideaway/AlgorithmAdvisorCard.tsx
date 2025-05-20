@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -139,7 +140,7 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               <Alert variant="default" className="bg-accent/10 border-accent/50">
                 <Sparkles className="h-5 w-5 text-accent" />
                 <AlertTitle className="font-semibold text-accent-foreground">Suggestion IA :</AlertTitle>
-                <AlertDescription className="text-accent-foreground/90 space-y-1">
+                <AlertDescription className="text-foreground space-y-1">
                   <p><strong>Algorithme :</strong> {suggestion.algorithm}</p>
                   <p><strong>Justification :</strong> {suggestion.rationale}</p>
                 </AlertDescription>

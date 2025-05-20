@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -15,16 +16,16 @@ import {z} from 'genkit';
 const AlgorithmAdvisorInputSchema = z.object({
   fileType: z
     .string()
-    .describe("The type of file to hide the message in (e.g., 'image', 'audio', 'text', 'pdf', 'video')."),
-  message: z.string().describe('The message to be hidden.'),
+    .describe("Le type de fichier pour cacher le message (ex: 'image', 'audio', 'texte', 'pdf', 'vidéo')."),
+  message: z.string().describe('Le message à cacher.'),
 });
 export type AlgorithmAdvisorInput = z.infer<typeof AlgorithmAdvisorInputSchema>;
 
 const AlgorithmAdvisorOutputSchema = z.object({
-  algorithm: z.string().describe('The suggested steganography algorithm.'),
+  algorithm: z.string().describe("L'algorithme de stéganographie suggéré."),
   rationale: z
     .string()
-    .describe('The rationale for choosing the suggested algorithm.'),
+    .describe('La justification pour le choix de l\'algorithme suggéré.'),
 });
 export type AlgorithmAdvisorOutput = z.infer<typeof AlgorithmAdvisorOutputSchema>;
 
@@ -36,16 +37,17 @@ const prompt = ai.definePrompt({
   name: 'algorithmAdvisorPrompt',
   input: {schema: AlgorithmAdvisorInputSchema},
   output: {schema: AlgorithmAdvisorOutputSchema},
-  prompt: `You are an expert in steganography algorithms. Given a file type and a message to hide,
-you will suggest the best steganography algorithm to use and explain your reasoning.
+  prompt: `Vous êtes un expert en algorithmes de stéganographie. Étant donné un type de fichier et un message à cacher,
+vous suggérerez le meilleur algorithme de stéganographie à utiliser et expliquerez votre raisonnement en français.
 
-File Type: {{{fileType}}}
-Message: {{{message}}}
+Type de Fichier : {{{fileType}}}
+Message : {{{message}}}
 
-Suggest the best algorithm and explain why it is the most suitable choice.
-Ensure that the algorithm you suggest can handle the specific file type.
-Be as detailed as possible in the rationale. Consider factors like file size impact, security, and ease of extraction.
-Avoid suggesting algorithms that are not practical or have known vulnerabilities.
+Suggérez le meilleur algorithme et expliquez pourquoi c'est le choix le plus approprié.
+Assurez-vous que l'algorithme que vous suggérez peut gérer le type de fichier spécifique.
+La justification doit être concise et aller à l'essentiel (1-2 phrases maximum), en considérant l'impact sur la taille du fichier, la sécurité et la facilité d'extraction.
+Évitez de suggérer des algorithmes qui ne sont pas pratiques ou qui ont des vulnérabilités connues.
+Répondez entièrement en français.
 `,
 });
 
