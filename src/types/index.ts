@@ -12,8 +12,8 @@ export type OperationMode = 'embed' | 'extract';
 
 export interface CapacityInfo {
   capacityBytes: number;
-  width: number;
-  height: number;
+  width: number; // Peut être 0 si non applicable (ex: audio)
+  height: number; // Peut être 0 si non applicable (ex: audio)
 }
 
 export interface StegToolState {
@@ -26,11 +26,11 @@ export interface StegToolState {
   extractedMessage: string | null; 
 
   selectedAlgorithmId: string | null;
-  aiSuggestion: AlgorithmAdvisorOutput | null; // This is not used on image-steg page anymore
+  aiSuggestion: AlgorithmAdvisorOutput | null; // Utilisé sur la page d'accueil
   
   isProcessing: boolean; 
   isExporting: boolean; 
-  isAdvisorLoading: boolean; // Not used on image-steg page
+  isAdvisorLoading: boolean; // Utilisé sur la page d'accueil
   
   operationMode: OperationMode;
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
@@ -47,9 +47,6 @@ export const fileTypeOptions: { value: FileTypeOptionValue, label: string }[] = 
   { value: 'video', label: 'Vidéo (MP4, AVI)' },
 ];
 
-// For the functional Image LSB tool, we focus on one algorithm.
-// The AI advisor on the homepage can still use a broader list if needed,
-// but this page will use a specific one.
 export const lsbPngAlgorithm: SteganographyAlgorithm = { 
   id: 'lsb_image_png', 
   name: 'LSB (Image PNG)', 
@@ -57,9 +54,16 @@ export const lsbPngAlgorithm: SteganographyAlgorithm = {
   supportedFileTypes: ['image/png'] 
 };
 
+export const lsbAudioWavAlgorithm: SteganographyAlgorithm = {
+  id: 'lsb_audio_wav',
+  name: 'LSB (Audio WAV) - Simulé',
+  description: 'Simulation d\'intégration par bit de poids faible pour les fichiers audio WAV.',
+  supportedFileTypes: ['audio/wav', 'audio/wave', 'audio/x-wav'],
+};
+
 export const mockAlgorithms: SteganographyAlgorithm[] = [
-  lsbPngAlgorithm, // Primary functional algorithm
-  // You can add other simulated algorithms here if the AI advisor on the main page needs them
+  lsbPngAlgorithm,
+  lsbAudioWavAlgorithm,
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
   { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
