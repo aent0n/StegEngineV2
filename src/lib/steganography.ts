@@ -2,29 +2,57 @@
 // Helper functions for LSB steganography
 
 /**
- * Converts a string to its binary representation.
- * Each character is converted to its 8-bit ASCII binary form.
+ * Encodes a string to a Uint8Array using UTF-8.
  */
-function textToBinary(text: string): string {
-  return text
-    .split('')
-    .map((char) => {
-      const binary = char.charCodeAt(0).toString(2);
-      return '0'.repeat(8 - binary.length) + binary; // Pad to 8 bits
-    })
-    .join('');
+function utf8Encode(text: string): Uint8Array {
+  return new TextEncoder().encode(text);
 }
 
 /**
- * Converts a binary string back to its text representation.
+ * Decodes a Uint8Array (UTF-8) to a string.
+ */
+function utf8Decode(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
+}
+
+/**
+ * Converts a string to its UTF-8 binary representation.
+ * Each byte of the UTF-8 encoded string is converted to its 8-bit binary form.
+ */
+function textToBinary(text: string): string {
+  const bytes = utf8Encode(text);
+  let binaryString = "";
+  for (const byte of bytes) {
+    binaryString += byte.toString(2).padStart(8, '0');
+  }
+  return binaryString;
+}
+
+/**
+ * Converts a binary string (representing UTF-8 bytes) back to its text representation.
  */
 function binaryToText(binary: string): string {
-  let text = '';
-  for (let i = 0; i < binary.length; i += 8) {
-    const byte = binary.substring(i, i + 8);
-    text += String.fromCharCode(parseInt(byte, 2));
+  if (binary.length % 8 !== 0) {
+    // This situation might indicate data corruption or an incomplete stream.
+    // For robust handling, one might throw an error or attempt partial decoding.
+    // Given the fixed-length header, this should ideally not happen with valid stego images.
+    console.warn("La longueur de la chaîne binaire n'est pas un multiple de 8. Corruption de données potentielle.");
+    // Truncate to the nearest multiple of 8 for processing.
+    // binary = binary.substring(0, Math.floor(binary.length / 8) * 8);
+    // Or throw an error if this is critical:
+    throw new Error("Impossible d'extraire le message : la longueur des données binaires est invalide.");
   }
-  return text;
+  const bytes = new Uint8Array(binary.length / 8);
+  for (let i = 0; i < bytes.length; i++) {
+    const byteString = binary.substring(i * 8, (i + 1) * 8);
+    bytes[i] = parseInt(byteString, 2);
+  }
+  try {
+    return utf8Decode(bytes);
+  } catch (e) {
+    console.error("Erreur de décodage UTF-8:", e);
+    throw new Error("Impossible d'extraire le message : encodage UTF-8 invalide. Le message est peut-être corrompu.");
+  }
 }
 
 /**
@@ -66,7 +94,7 @@ async function getImageData(file: File): Promise<ImageData> {
   });
 }
 
-const MESSAGE_LENGTH_BITS = 32; // Using 32 bits to store the length of the message payload
+const MESSAGE_LENGTH_BITS = 32; // Using 32 bits to store the length of the message payload (in bits)
 
 /**
  * Calculates the maximum number of bytes that can be embedded in an ImageData object.
@@ -97,7 +125,7 @@ export async function embedMessageInImage(file: File, message: string): Promise<
 
   const imageData = await getImageData(file);
   const capacityBytes = calculateCapacity(imageData);
-  const messageBinary = textToBinary(message);
+  const messageBinary = textToBinary(message); // Uses UTF-8 aware textToBinary
   const messageLengthInBits = messageBinary.length;
 
   if (Math.ceil(messageLengthInBits / 8) > capacityBytes) {
@@ -172,7 +200,7 @@ export async function extractMessageFromImage(file: File): Promise<string> {
 
   const messageLengthInBits = parseInt(extractedLengthBits, 2);
 
-  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) {
+  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) { // Allow 0 for empty message
     throw new Error("Impossible de déterminer la longueur du message caché, ou format de longueur invalide.");
   }
 
@@ -180,19 +208,23 @@ export async function extractMessageFromImage(file: File): Promise<string> {
     return ""; // Valid empty message
   }
   
-  const capacityBytes = calculateCapacity(imageData);
-  if (Math.ceil(messageLengthInBits / 8) > capacityBytes) {
-      throw new Error(`La longueur de message annoncée (${Math.ceil(messageLengthInBits/8)} octets) dépasse la capacité de l'image (${capacityBytes} octets). Le fichier est peut-être corrompu ou n'a pas été encodé par cet outil.`);
+  const capacityBytes = calculateCapacity(imageData); // capacity of payload in bytes
+  const maxPayloadBits = capacityBytes * 8;
+
+  if (messageLengthInBits > maxPayloadBits) {
+      throw new Error(`La longueur de message annoncée (${Math.ceil(messageLengthInBits/8)} octets / ${messageLengthInBits} bits) dépasse la capacité de l'image (${capacityBytes} octets / ${maxPayloadBits} bits). Le fichier est peut-être corrompu ou n'a pas été encodé par cet outil.`);
   }
 
   // 2. Extract message payload
   let extractedMessageBits = '';
   let messageBitsRead = 0;
-  let currentBitInStream = 0; // Tracks the overall bit position in the steganographic data (length + payload)
+  // Start reading bits for the payload AFTER the bits used for the length
+  let dataStreamBitIndex = 0; // Overall bit position in the image's steganographic data space
 
   for (let i = 0; i < data.length && messageBitsRead < messageLengthInBits; i += 4) {
     for (let channel = 0; channel < 3; channel++) { 
-      if (currentBitInStream >= MESSAGE_LENGTH_BITS) { 
+      // Only start collecting message bits after skipping past the length bits
+      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS) { 
         if (messageBitsRead < messageLengthInBits) {
           extractedMessageBits += (data[i + channel] & 1).toString();
           messageBitsRead++;
@@ -200,13 +232,14 @@ export async function extractMessageFromImage(file: File): Promise<string> {
           break; 
         }
       }
-      currentBitInStream++;
+      dataStreamBitIndex++; // Increment for every potential bit position in the stego data stream
       
-      if (currentBitInStream >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
+      // Optimization: if we've read all needed length bits and all message bits, stop.
+      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
           break;
       }
     }
-    if (messageBitsRead >= messageLengthInBits || currentBitInStream >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
+    if (messageBitsRead >= messageLengthInBits || dataStreamBitIndex >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
         break; 
     }
   }
@@ -215,7 +248,7 @@ export async function extractMessageFromImage(file: File): Promise<string> {
     throw new Error("N'a pas pu extraire le message complet. Le fichier est peut-être corrompu ou incomplet.");
   }
 
-  return binaryToText(extractedMessageBits);
+  return binaryToText(extractedMessageBits); // Uses UTF-8 aware binaryToText
 }
 
 /**
