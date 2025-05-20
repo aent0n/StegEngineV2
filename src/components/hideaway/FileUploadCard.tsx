@@ -22,9 +22,10 @@ interface FileUploadCardProps {
   onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
   operationMode: OperationMode;
-  acceptedFileTypes: string; // Nouvelle prop pour les types de fichiers acceptés
+  acceptedFileTypes?: string; 
   supportedFileTypesMessage?: string;
   capacityInfo: CapacityInfo | null;
+  isMetadataAlgorithm?: boolean; // To adjust UI for metadata-based algorithms
 }
 
 const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
@@ -45,15 +46,20 @@ export default function FileUploadCard({
   messageToEmbed,
   onMessageToEmbedChange,
   operationMode,
-  acceptedFileTypes, // Utilisation de la nouvelle prop
-  supportedFileTypesMessage = "Types supportés pour cet outil : Images (PNG, JPG).",
+  acceptedFileTypes = "image/png", 
+  supportedFileTypesMessage = "Fichiers PNG uniquement pour cet outil.",
   capacityInfo,
+  isMetadataAlgorithm = false,
 }: FileUploadCardProps) {
   
   const messageBytes = operationMode === 'embed' && messageToEmbed ? new TextEncoder().encode(messageToEmbed).length : 0;
-  const percentageUsed = capacityInfo && capacityInfo.capacityBytes > 0 
+  const percentageUsed = capacityInfo && capacityInfo.capacityBytes > 0 && !capacityInfo.isEstimate
     ? Math.min(100, Math.max(0, (messageBytes / capacityInfo.capacityBytes) * 100)) 
     : 0;
+
+  const displayCapacityInfo = operationMode === 'embed' || (operationMode === 'extract' && capacityInfo);
+  const showProgressBar = operationMode === 'embed' && capacityInfo && !capacityInfo.isEstimate && capacityInfo.capacityBytes > 0;
+
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
@@ -61,8 +67,8 @@ export default function FileUploadCard({
         <CardTitle className="text-xl">Fichier Porteur {operationMode === 'embed' ? '& Message Secret' : ''}</CardTitle>
         <CardDescription>
           {operationMode === 'embed' 
-            ? `Téléchargez le fichier (${supportedFileTypesMessage.toLowerCase().replace('fichiers ', '').replace(' pour cet outil.', '')}) pour cacher votre message, et saisissez votre message.`
-            : `Téléchargez le fichier (${supportedFileTypesMessage.toLowerCase().replace('fichiers ', '').replace(' pour cet outil.', '')}) contenant un message caché pour l'extraire.`
+            ? `Téléchargez le fichier porteur (${supportedFileTypesMessage.toLowerCase().replace('fichiers compatibles: ', '').replace('.', '')}) et saisissez votre message à cacher.`
+            : `Téléchargez le fichier porteur (${supportedFileTypesMessage.toLowerCase().replace('fichiers compatibles: ', '').replace('.', '')}) pour en extraire un message caché.`
           }
         </CardDescription>
       </CardHeader>
@@ -72,7 +78,7 @@ export default function FileUploadCard({
           <Input
             id="carrierFile"
             type="file"
-            accept={acceptedFileTypes} // Utilisation de la prop dynamique
+            accept={acceptedFileTypes}
             onChange={onFileChange}
             className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-3 cursor-pointer"
             aria-describedby="fileHelp"
@@ -89,7 +95,7 @@ export default function FileUploadCard({
                   width={80} 
                   height={80} 
                   className="rounded object-contain border"
-                  data-ai-hint="uploaded content" // Plus générique
+                  data-ai-hint="uploaded content"
                 />
               ) : (
                 <FileIconDisplay fileType={carrierFile?.type || null} />
@@ -97,32 +103,33 @@ export default function FileUploadCard({
               <div className="text-sm w-full">
                 <p className="font-medium text-secondary-foreground">{fileName}</p>
                 {carrierFile && <p className="text-xs text-muted-foreground">Type: {carrierFile.type}, Taille: {(carrierFile.size / 1024).toFixed(2)} KB</p>}
-                {capacityInfo && (
+                {capacityInfo && displayCapacityInfo && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {capacityInfo.width > 0 && capacityInfo.height > 0 && ( // Afficher les dimensions seulement si elles sont pertinentes
+                    {capacityInfo.width > 0 && capacityInfo.height > 0 && !isMetadataAlgorithm && (
                       <p>Dimensions: {capacityInfo.width}x{capacityInfo.height}px</p>
                     )}
                     {operationMode === 'embed' && (
                       <>
                         <p className="mt-1">
-                          Message : {messageBytes} octets / Capacité max : {capacityInfo.capacityBytes} octets
+                          Message : {messageBytes} octets / 
+                          {capacityInfo.isEstimate ? " Capacité estimée" : " Capacité max"} : {capacityInfo.capacityBytes} octets
                         </p>
-                        <div className="w-full mt-1 relative"> {/* Progress bar container */}
-                          <Progress 
-                            value={percentageUsed} 
-                            className="w-full h-2.5" 
-                            aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
-                          />
-                        </div>
-                        {messageBytes > 0 && capacityInfo.capacityBytes > 0 && (
-                          <p className={cn(
-                            "text-xs text-center mt-2",
-                            messageBytes > capacityInfo.capacityBytes ? "text-red-500" : "text-muted-foreground"
-                          )}>
-                            Utilisation : {percentageUsed.toFixed(1)}%
-                          </p>
+                        {showProgressBar && (
+                          <div className="w-full mt-1 relative">
+                            <Progress 
+                              value={percentageUsed} 
+                              className="w-full h-2.5" 
+                              aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
+                            />
+                             <p className={cn(
+                                "text-xs text-center mt-1",
+                                messageBytes > capacityInfo.capacityBytes ? "text-red-500" : "text-muted-foreground"
+                              )}>
+                                Utilisation : {percentageUsed.toFixed(1)}%
+                              </p>
+                          </div>
                         )}
-                        {messageBytes > capacityInfo.capacityBytes && (
+                        {messageBytes > 0 && capacityInfo.capacityBytes > 0 && messageBytes > capacityInfo.capacityBytes && !capacityInfo.isEstimate && (
                             <p className="text-xs text-red-500 flex items-center justify-center gap-1 mt-1">
                                 <AlertCircle size={14} />
                                 Le message est trop long.
@@ -131,7 +138,9 @@ export default function FileUploadCard({
                       </>
                     )}
                      {operationMode === 'extract' && (
-                       <p className="mt-1">Capacité stéganographique estimée : {capacityInfo.capacityBytes} octets</p>
+                       <p className="mt-1">
+                         {capacityInfo.isEstimate ? "Capacité stéganographique estimée" : "Capacité stéganographique"} : {capacityInfo.capacityBytes} octets
+                       </p>
                      )}
                   </div>
                 )}
@@ -158,3 +167,4 @@ export default function FileUploadCard({
     </Card>
   );
 }
+
