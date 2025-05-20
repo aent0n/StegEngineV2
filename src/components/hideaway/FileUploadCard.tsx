@@ -38,12 +38,12 @@ export default function FileUploadCard({
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl">Carrier File & Secret Message</CardTitle>
-        <CardDescription>Upload the file to hide your message in, and type your secret message.</CardDescription>
+        <CardTitle className="text-xl">Fichier Porteur & Message Secret</CardTitle>
+        <CardDescription>Téléchargez le fichier dans lequel cacher votre message, et saisissez votre message secret.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="carrierFile" className="text-base">1. Upload Carrier File</Label>
+          <Label htmlFor="carrierFile" className="text-base">1. Télécharger le Fichier Porteur</Label>
           <Input
             id="carrierFile"
             type="file"
@@ -52,14 +52,14 @@ export default function FileUploadCard({
             aria-describedby="fileHelp"
           />
           <p id="fileHelp" className="text-sm text-muted-foreground">
-            Supported types: Images, Audio, Video, Text, PDF.
+            Types supportés : Images, Audio, Vidéo, Texte, PDF.
           </p>
           {fileName && (
             <div className="mt-4 p-4 border rounded-lg bg-secondary/50 flex items-center gap-4">
               {filePreviewUrl && carrierFile?.type.startsWith('image/') ? (
                 <Image 
                   src={filePreviewUrl} 
-                  alt="File preview" 
+                  alt="Aperçu du fichier" 
                   width={64} 
                   height={64} 
                   className="rounded object-cover"
@@ -70,22 +70,22 @@ export default function FileUploadCard({
               )}
               <div>
                 <p className="font-medium text-secondary-foreground">{fileName}</p>
-                {carrierFile && <p className="text-xs text-muted-foreground">Type: {carrierFile.type}, Size: {(carrierFile.size / 1024).toFixed(2)} KB</p>}
+                {carrierFile && <p className="text-xs text-muted-foreground">Type: {carrierFile.type}, Taille: {(carrierFile.size / 1024).toFixed(2)} KB</p>}
               </div>
             </div>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="secretMessage" className="text-base">2. Your Secret Message</Label>
+          <Label htmlFor="secretMessage" className="text-base">2. Votre Message Secret</Label>
           <Textarea
             id="secretMessage"
             value={message}
             onChange={onMessageChange}
-            placeholder="Enter the message you want to hide..."
+            placeholder="Saisissez le message que vous souhaitez cacher..."
             rows={5}
             className="text-base"
-            aria-label="Secret message input"
+            aria-label="Saisie du message secret"
           />
         </div>
       </CardContent>

@@ -38,15 +38,15 @@ export default function AlgorithmActionsCard({
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl">Algorithm & Actions</CardTitle>
-        <CardDescription>Choose an algorithm and perform steganography operations.</CardDescription>
+        <CardTitle className="text-xl">Algorithme & Actions</CardTitle>
+        <CardDescription>Choisissez un algorithme et effectuez des opérations de stéganographie.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="algorithmSelect" className="text-base">3. Select Algorithm</Label>
+          <Label htmlFor="algorithmSelect" className="text-base">3. Sélectionner l'Algorithme</Label>
           <Select value={selectedAlgorithmId || ""} onValueChange={onAlgorithmChange} disabled={algorithms.length === 0}>
-            <SelectTrigger id="algorithmSelect" className="text-base" aria-label="Select steganography algorithm">
-              <SelectValue placeholder="Select an algorithm" />
+            <SelectTrigger id="algorithmSelect" className="text-base" aria-label="Sélectionner l'algorithme de stéganographie">
+              <SelectValue placeholder="Sélectionner un algorithme" />
             </SelectTrigger>
             <SelectContent>
               {algorithms.length > 0 ? (
@@ -56,7 +56,7 @@ export default function AlgorithmActionsCard({
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem value="loading" disabled>Loading algorithms...</SelectItem>
+                <SelectItem value="loading" disabled>Chargement des algorithmes...</SelectItem>
               )}
             </SelectContent>
           </Select>
@@ -73,14 +73,14 @@ export default function AlgorithmActionsCard({
             disabled={!isEmbedPossible || isEmbedding || isMessageEmbedded}
             size="lg"
             className="w-full text-base"
-            aria-label="Embed message into file"
+            aria-label="Intégrer le message dans le fichier"
           >
             {isEmbedding ? (
-              <><Skeleton className="w-4 h-4 mr-2 rounded-full animate-spin" /> Embedding...</>
+              <><Skeleton className="w-4 h-4 mr-2 rounded-full animate-spin" /> Intégration...</>
             ) : isMessageEmbedded ? (
-              <><ShieldCheck className="mr-2 h-5 w-5" /> Embedded</>
+              <><ShieldCheck className="mr-2 h-5 w-5" /> Intégré</>
             ) : (
-              <><Shuffle className="mr-2 h-5 w-5" /> Embed Message</>
+              <><Shuffle className="mr-2 h-5 w-5" /> Intégrer le Message</>
             )}
           </Button>
           <Button
@@ -89,18 +89,18 @@ export default function AlgorithmActionsCard({
             variant="outline"
             size="lg"
             className="w-full text-base"
-            aria-label="Export steganographyzed file"
+            aria-label="Exporter le fichier stéganographié"
           >
             {isExporting ? (
-              <><Skeleton className="w-4 h-4 mr-2 rounded-full animate-spin" /> Exporting...</>
+              <><Skeleton className="w-4 h-4 mr-2 rounded-full animate-spin" /> Exportation...</>
             ) : (
-              <><Download className="mr-2 h-5 w-5" /> Export File</>
+              <><Download className="mr-2 h-5 w-5" /> Exporter le Fichier</>
             )}
           </Button>
         </div>
         {isMessageEmbedded && !isExporting && (
           <p className="text-sm text-center text-green-600 dark:text-green-400 font-medium">
-            Message embedded successfully! You can now export the file.
+            Message intégré avec succès ! Vous pouvez maintenant exporter le fichier.
           </p>
         )}
       </CardContent>

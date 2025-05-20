@@ -22,9 +22,9 @@ import { fileTypeOptions, type FileTypeOption } from "@/types";
 
 const advisorSchema = z.object({
   fileType: z.enum(['image', 'audio', 'text', 'pdf', 'video'], {
-    required_error: "File type is required.",
+    required_error: "Le type de fichier est requis.",
   }),
-  message: z.string().min(1, "Message cannot be empty.").max(500, "Message is too long (max 500 chars)."),
+  message: z.string().min(1, "Le message ne peut pas être vide.").max(500, "Message trop long (max 500 caractères)."),
 });
 
 type AdvisorFormValues = z.infer<typeof advisorSchema>;
@@ -58,15 +58,15 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
       setSuggestion(result);
       onSuggestion(result); // Pass suggestion to parent
       toast({
-        title: "AI Suggestion Received",
-        description: `Algorithm: ${result.algorithm}`,
+        title: "Suggestion IA Reçue",
+        description: `Algorithme : ${result.algorithm}`,
       });
     } catch (error) {
-      console.error("Error getting AI suggestion:", error);
+      console.error("Erreur lors de la récupération de la suggestion IA :", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to get AI suggestion. Please try again.",
+        title: "Erreur",
+        description: "Échec de la récupération de la suggestion IA. Veuillez réessayer.",
       });
     } finally {
       setIsLoading(false);
@@ -76,8 +76,8 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2"><Wand2 className="text-accent" /> AI Algorithm Advisor</CardTitle>
-        <CardDescription>Let our AI suggest the best algorithm for your needs based on file type and message content.</CardDescription>
+        <CardTitle className="text-xl flex items-center gap-2"><Wand2 className="text-accent" /> Conseiller d'Algorithme IA</CardTitle>
+        <CardDescription>Laissez notre IA suggérer le meilleur algorithme pour vos besoins en fonction du type de fichier et du contenu du message.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -87,11 +87,11 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               name="fileType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">File Type</FormLabel>
+                  <FormLabel className="text-base">Type de Fichier</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                     <FormControl>
-                      <SelectTrigger aria-label="Select file type for AI advisor">
-                        <SelectValue placeholder="Select the type of your carrier file" />
+                      <SelectTrigger aria-label="Sélectionner le type de fichier pour le conseiller IA">
+                        <SelectValue placeholder="Sélectionnez le type de votre fichier porteur" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -111,14 +111,14 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Message Content (or similar)</FormLabel>
+                  <FormLabel className="text-base">Contenu du Message (ou similaire)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Briefly describe your message or paste a short snippet."
+                      placeholder="Décrivez brièvement votre message ou collez un court extrait."
                       {...field}
                       rows={3}
                       disabled={isLoading}
-                      aria-label="Message content for AI advisor"
+                      aria-label="Contenu du message pour le conseiller IA"
                     />
                   </FormControl>
                   <FormMessage />
@@ -133,15 +133,15 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               ) : (
                 <Sparkles className="mr-2 h-5 w-5" />
               )}
-              Get Suggestion
+              Obtenir une Suggestion
             </Button>
             {suggestion && !isLoading && (
               <Alert variant="default" className="bg-accent/10 border-accent/50">
                 <Sparkles className="h-5 w-5 text-accent" />
-                <AlertTitle className="font-semibold text-accent-foreground">AI Suggestion:</AlertTitle>
+                <AlertTitle className="font-semibold text-accent-foreground">Suggestion IA :</AlertTitle>
                 <AlertDescription className="text-accent-foreground/90 space-y-1">
-                  <p><strong>Algorithm:</strong> {suggestion.algorithm}</p>
-                  <p><strong>Rationale:</strong> {suggestion.rationale}</p>
+                  <p><strong>Algorithme :</strong> {suggestion.algorithm}</p>
+                  <p><strong>Justification :</strong> {suggestion.rationale}</p>
                 </AlertDescription>
               </Alert>
             )}
