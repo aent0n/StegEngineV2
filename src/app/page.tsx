@@ -19,11 +19,11 @@ const initialState: HideawayState = {
   aiSuggestion: null,
   isEmbedding: false,
   isExporting: false,
-  isAdvisorLoading: false, // This state is managed within AlgorithmAdvisorCard now
+  isAdvisorLoading: false, 
   isMessageEmbedded: false,
 };
 
-export default function HideawayPage() {
+export default function StegEnginePage() {
   const [state, setState] = useState<HideawayState>(initialState);
   const { toast } = useToast();
 
@@ -125,7 +125,7 @@ export default function HideawayPage() {
           Hide Your Secrets in Plain Sight
         </h1>
         <p className="mt-3 max-w-md mx-auto text-base text-muted-foreground sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-          Use modern steganography techniques to embed messages within your files. Secure, simple, and smart with AI-powered algorithm suggestions.
+          Use modern steganography techniques to embed messages within your files. Secure, simple, and smart with Steg'Engine's AI-powered algorithm suggestions.
         </p>
       </div>
 

@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Hideaway - Modern Steganography Tool',
-  description: 'Hide messages in plain sight with Hideaway, your modern steganography solution.',
+  title: "Steg'Engine - Modern Steganography Tool",
+  description: "Hide messages in plain sight with Steg'Engine, your modern steganography solution.",
 };
 
 export default function RootLayout({
