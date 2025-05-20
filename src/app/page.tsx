@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -118,16 +119,16 @@ export default function StegEnginePage() {
   return (
     <div className="space-y-12">
       {/* Hero Section adapted from HTML example */}
-      <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
-        <div className="flex-shrink-0">
+      <div className="flex flex-col md:flex-row items-start text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
+        <div className="flex-shrink-0 mx-auto md:mx-0">
           <Image 
             src="/stegengine_hero.svg" 
             alt="Logo Steg'Engine Hero" 
-            width={192}
-            height={192}
+            width={192} // h-48 equivalent
+            height={192} // h-48 equivalent
             className="h-32 w-32 md:h-48 md:w-48 object-contain"
             data-ai-hint="abstract geometric"
-            onError={(e) => {
+            onError={(e) => { // Fallback in case the SVG isn't there or errors
               (e.target as HTMLImageElement).onerror = null; 
               (e.target as HTMLImageElement).src = 'https://placehold.co/192x192.png';
             }}
@@ -137,10 +138,22 @@ export default function StegEnginePage() {
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Bienvenue sur Steg'Engine
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto md:mx-0">
-            Votre boîte à outils complète pour les opérations de stéganographie. Choisissez parmi notre variété d'outils 
-            pour cacher et extraire des données en utilisant différentes techniques.
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto md:mx-0 mb-6">
+            Steg'Engine est une application web moderne de stéganographie, permettant de dissimuler des informations dans différents types de fichiers. L'application combine une interface utilisateur intuitive avec un backend robuste pour un traitement sécurisé des données.
           </p>
+          <div className="text-muted-foreground text-left max-w-2xl mx-auto md:mx-0">
+            <h2 className="text-xl font-semibold text-foreground mb-3">🌟 Fonctionnalités Actuelles</h2>
+            <h3 className="text-lg font-medium text-foreground mt-2 mb-1">Stéganographie d'Image :</h3>
+            <ul className="list-disc list-inside space-y-1 pl-4 text-sm">
+              <li>Technique LSB (Least Significant Bit)</li>
+              <li>Support des formats PNG</li>
+              <li>Interface drag & drop</li>
+              <li>Prévisualisation en temps réel</li>
+              <li>Statistiques de capacité</li>
+              <li>Compression des données</li>
+              <li>Chiffrement AES</li>
+            </ul>
+          </div>
         </div>
       </div>
 
