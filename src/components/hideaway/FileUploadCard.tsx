@@ -6,14 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, FileText, Image as ImageIconLucide, Music, Video, FileQuestion } from "lucide-react";
+import { UploadCloud, FileText, Image as ImageIconLucide, Music, Video, FileQuestion, AlertCircle } from "lucide-react";
 import Image from "next/image";
-import type { OperationMode } from '@/types';
+import type { OperationMode, CapacityInfo } from '@/types';
 
 interface FileUploadCardProps {
   carrierFile: File | null;
   fileName: string | null;
-  filePreviewUrl: string | null;
+  filePreviewUrl: string | null; // This could be original or stego image data URI for preview
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   
   messageToEmbed: string;
@@ -21,6 +21,8 @@ interface FileUploadCardProps {
   
   extractedMessage: string | null;
   operationMode: OperationMode;
+  supportedFileTypesMessage?: string; // Custom message for supported file types
+  capacityInfo: CapacityInfo | null; // To display image capacity
 }
 
 const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
@@ -42,6 +44,8 @@ export default function FileUploadCard({
   onMessageToEmbedChange,
   extractedMessage,
   operationMode,
+  supportedFileTypesMessage = "Types supportés pour cet outil : Images (PNG, JPG).",
+  capacityInfo,
 }: FileUploadCardProps) {
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
@@ -49,41 +53,47 @@ export default function FileUploadCard({
         <CardTitle className="text-xl">Fichier Porteur {operationMode === 'extract' ? ' & Message Extrait' : '& Message Secret'}</CardTitle>
         <CardDescription>
           {operationMode === 'embed' 
-            ? "Téléchargez le fichier pour cacher votre message, et saisissez votre message."
-            : "Téléchargez le fichier contenant un message caché pour l'extraire."
+            ? "Téléchargez le fichier PNG pour cacher votre message, et saisissez votre message."
+            : "Téléchargez le fichier PNG contenant un message caché pour l'extraire."
           }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="carrierFile" className="text-base">1. Télécharger le Fichier Porteur</Label>
+          <Label htmlFor="carrierFile" className="text-base">1. Télécharger le Fichier Porteur (PNG)</Label>
           <Input
             id="carrierFile"
             type="file"
+            accept="image/png" // Restrict to PNG for functional LSB
             onChange={onFileChange}
             className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-3 cursor-pointer"
             aria-describedby="fileHelp"
           />
           <p id="fileHelp" className="text-sm text-muted-foreground">
-            Types supportés pour cet outil : Images (PNG, JPG).
+            {supportedFileTypesMessage}
           </p>
           {fileName && (
-            <div className="mt-4 p-4 border rounded-lg bg-secondary/50 flex items-center gap-4">
+            <div className="mt-4 p-4 border rounded-lg bg-secondary/50 flex flex-col sm:flex-row items-center gap-4">
               {filePreviewUrl && carrierFile?.type.startsWith('image/') ? (
                 <Image 
                   src={filePreviewUrl} 
                   alt="Aperçu du fichier" 
-                  width={64} 
-                  height={64} 
-                  className="rounded object-cover"
-                  data-ai-hint="abstract texture" 
+                  width={80} 
+                  height={80} 
+                  className="rounded object-contain border" // Use object-contain
+                  data-ai-hint="uploaded image"
                 />
               ) : (
                 <FileIconDisplay fileType={carrierFile?.type || null} />
               )}
-              <div>
+              <div className="text-sm">
                 <p className="font-medium text-secondary-foreground">{fileName}</p>
                 {carrierFile && <p className="text-xs text-muted-foreground">Type: {carrierFile.type}, Taille: {(carrierFile.size / 1024).toFixed(2)} KB</p>}
+                {capacityInfo && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dimensions: {capacityInfo.width}x{capacityInfo.height}px, Capacité max: {capacityInfo.capacityBytes} octets
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -101,6 +111,14 @@ export default function FileUploadCard({
               className="text-base"
               aria-label="Saisie du message secret à cacher"
             />
+            {capacityInfo && messageToEmbed && (
+                 (messageToEmbed.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join('').length / 8 > capacityInfo.capacityBytes) && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                        <AlertCircle size={14} />
+                        Le message est trop long pour la capacité de l'image.
+                    </p>
+                )
+            )}
           </div>
         )}
 
