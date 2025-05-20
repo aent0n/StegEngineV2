@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import FileUploadCard from "@/components/hideaway/FileUploadCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
 import type { StegToolState, OperationMode } from "@/types";
-import { lsbPngAlgorithm } from "@/types"; // Use the specific LSB PNG algorithm
+import { lsbPngAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
 import { embedMessageInImage, extractMessageFromImage, getCapacityInfo } from '@/lib/steganography';
 
@@ -97,7 +97,7 @@ export default function ImageStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessage: null, // Clear extracted message when switching modes
+      extractedMessage: null, 
     }));
   };
 
@@ -106,8 +106,10 @@ export default function ImageStegPage() {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier, saisir un message et choisir un algorithme." });
       return;
     }
-    if (state.capacityInfo && (textToBinary(state.messageToEmbed).length / 8 > state.capacityInfo.capacityBytes)) {
-        toast({ variant: "destructive", title: "Erreur de Capacité", description: `Message trop long (${Math.ceil(textToBinary(state.messageToEmbed).length/8)} octets). Capacité max: ${state.capacityInfo.capacityBytes} octets.` });
+    
+    const messageBytes = new TextEncoder().encode(state.messageToEmbed).length;
+    if (state.capacityInfo && (messageBytes > state.capacityInfo.capacityBytes)) {
+        toast({ variant: "destructive", title: "Erreur de Capacité", description: `Message trop long (${messageBytes} octets). Capacité max: ${state.capacityInfo.capacityBytes} octets.` });
         return;
     }
 
@@ -128,10 +130,6 @@ export default function ImageStegPage() {
     }
   };
   
-  function textToBinary(text: string): string {
-      return text.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join('');
-  }
-
   const handleExportStegoFile = () => {
     if (!state.stegoFileDataUri || !state.fileName) {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun fichier stéganographié à exporter. Veuillez d'abord intégrer un message." });
@@ -167,7 +165,7 @@ export default function ImageStegPage() {
       toast({ title: "Extraction Réussie", description: "Message extrait avec succès." });
     } catch (error: any) {
       console.error("Extract error:", error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction: ${error.message}`}, extractedMessage: '' })); // Set to empty string on error to avoid null issues
+      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction: ${error.message}`}, extractedMessage: '' }));
       toast({ variant: "destructive", title: "Erreur d'Extraction", description: error.message });
     }
   };
@@ -195,7 +193,8 @@ export default function ImageStegPage() {
     };
   }, [state.filePreviewUrl]);
 
-  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && (textToBinary(state.messageToEmbed).length / 8 <= state.capacityInfo.capacityBytes);
+  const messageBytesForEmbed = state.messageToEmbed ? new TextEncoder().encode(state.messageToEmbed).length : 0;
+  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && (messageBytesForEmbed <= state.capacityInfo.capacityBytes);
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
@@ -216,7 +215,6 @@ export default function ImageStegPage() {
             operationMode={state.operationMode}
             supportedFileTypesMessage="Fichiers PNG uniquement pour cet outil."
             capacityInfo={state.capacityInfo}
-            // extractedMessage prop is removed as it's handled in AlgorithmActionsCard
           />
         </div>
         
@@ -230,20 +228,18 @@ export default function ImageStegPage() {
             onEmbed={handleEmbed}
             onExportStegoFile={handleExportStegoFile}
             onExtract={handleExtract}
-            onCopyExtractedMessage={handleCopyExtractedMessage} // New handler
+            onCopyExtractedMessage={handleCopyExtractedMessage} 
             isProcessing={state.isProcessing}
-            isExporting={state.isExporting} // Still relevant for stego file export
+            isExporting={state.isExporting} 
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // New condition
+            isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} 
             statusMessage={state.statusMessage}
-            extractedMessage={state.extractedMessage} // Pass extracted message for display
+            extractedMessage={state.extractedMessage} 
           />
         </div>
       </div>
     </div>
   );
 }
-
-    

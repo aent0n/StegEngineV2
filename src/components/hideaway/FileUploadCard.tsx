@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileQuestion, Image as ImageIconLucide, Music, Video, FileText as FileTextIcon, AlertCircle } from "lucide-react"; // Renamed FileText to avoid conflict
+import { Progress } from "@/components/ui/progress"; // Import Progress
+import { FileQuestion, Image as ImageIconLucide, Music, Video, FileText as FileTextIcon, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import type { OperationMode, CapacityInfo } from '@/types';
 
@@ -45,6 +46,12 @@ export default function FileUploadCard({
   supportedFileTypesMessage = "Types supportés pour cet outil : Images (PNG, JPG).",
   capacityInfo,
 }: FileUploadCardProps) {
+  
+  const messageBytes = operationMode === 'embed' && messageToEmbed ? new TextEncoder().encode(messageToEmbed).length : 0;
+  const percentageUsed = capacityInfo && capacityInfo.capacityBytes > 0 
+    ? Math.min(100, Math.max(0, (messageBytes / capacityInfo.capacityBytes) * 100)) 
+    : 0;
+
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
@@ -84,13 +91,34 @@ export default function FileUploadCard({
               ) : (
                 <FileIconDisplay fileType={carrierFile?.type || null} />
               )}
-              <div className="text-sm">
+              <div className="text-sm w-full">
                 <p className="font-medium text-secondary-foreground">{fileName}</p>
                 {carrierFile && <p className="text-xs text-muted-foreground">Type: {carrierFile.type}, Taille: {(carrierFile.size / 1024).toFixed(2)} KB</p>}
                 {capacityInfo && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Dimensions: {capacityInfo.width}x{capacityInfo.height}px, Capacité max: {capacityInfo.capacityBytes} octets
-                  </p>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <p>Dimensions: {capacityInfo.width}x{capacityInfo.height}px</p>
+                    {operationMode === 'embed' && (
+                      <>
+                        <p className="mt-1">
+                          Message : {messageBytes} octets / Capacité max : {capacityInfo.capacityBytes} octets
+                        </p>
+                        <Progress 
+                          value={percentageUsed} 
+                          className="w-full h-2.5 mt-1" 
+                          aria-label={`Espace utilisé ${percentageUsed.toFixed(0)}%`}
+                        />
+                        {messageBytes > capacityInfo.capacityBytes && (
+                            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                <AlertCircle size={14} />
+                                Le message est trop long pour la capacité de l'image.
+                            </p>
+                        )}
+                      </>
+                    )}
+                     {operationMode === 'extract' && (
+                       <p className="mt-1">Capacité estimée : {capacityInfo.capacityBytes} octets</p>
+                     )}
+                  </div>
                 )}
               </div>
             </div>
@@ -109,21 +137,10 @@ export default function FileUploadCard({
               className="text-base"
               aria-label="Saisie du message secret à cacher"
             />
-            {capacityInfo && messageToEmbed && (
-                 (messageToEmbed.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join('').length / 8 > capacityInfo.capacityBytes) && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                        <AlertCircle size={14} />
-                        Le message est trop long pour la capacité de l'image.
-                    </p>
-                )
-            )}
+            {/* Warning for message too long is now integrated with capacity display */}
           </div>
         )}
-
-        {/* The extracted message display is now removed from this card and handled in AlgorithmActionsCard */}
       </CardContent>
     </Card>
   );
 }
-
-    
