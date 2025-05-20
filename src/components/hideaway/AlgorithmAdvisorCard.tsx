@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input"; // Textarea is already in FileUploadCard
+// Input component is not used here, Textarea is sufficient
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,7 +18,7 @@ import { Wand2, Sparkles, Loader2 } from "lucide-react";
 import type { AlgorithmAdvisorInput, AlgorithmAdvisorOutput } from "@/ai/flows/algorithm-advisor";
 import { suggestAlgorithm as getAiSuggestion } from "@/ai/flows/algorithm-advisor";
 import { useToast } from "@/hooks/use-toast";
-import { fileTypeOptions, type FileTypeOption } from "@/types";
+import { fileTypeOptions, type FileTypeOption, mockAlgorithms } from "@/types";
 
 
 const advisorSchema = z.object({
@@ -51,9 +51,11 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
     setIsLoading(true);
     setSuggestion(null);
     try {
+      const algorithmNames = mockAlgorithms.map(algo => algo.name);
       const advisorInput: AlgorithmAdvisorInput = {
         fileType: data.fileType,
         message: data.message,
+        availableAlgorithms: algorithmNames,
       };
       const result = await getAiSuggestion(advisorInput);
       setSuggestion(result);
@@ -78,7 +80,7 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2"><Wand2 className="text-accent" /> Conseiller d'Algorithme IA</CardTitle>
-        <CardDescription>Laissez notre IA suggérer le meilleur algorithme pour vos besoins en fonction du type de fichier et du contenu du message.</CardDescription>
+        <CardDescription>Laissez notre IA suggérer le meilleur algorithme pour vos besoins en fonction du type de fichier et du contenu du message, parmi ceux disponibles dans l'outil.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -137,9 +139,9 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
               Obtenir une Suggestion
             </Button>
             {suggestion && !isLoading && (
-              <Alert variant="default" className="bg-accent/10 border-accent/50">
-                <Sparkles className="h-5 w-5 text-accent" />
-                <AlertTitle className="font-semibold text-accent-foreground">Suggestion IA :</AlertTitle>
+              <Alert variant="default" className="bg-secondary/10 border-secondary/50"> {/* Adjusted background and border to be less prominent like accent but lighter */}
+                <Sparkles className="h-5 w-5 text-primary" /> {/* Changed icon color to primary */}
+                <AlertTitle className="font-semibold text-foreground">Suggestion IA :</AlertTitle>
                 <AlertDescription className="text-foreground space-y-1">
                   <p><strong>Algorithme :</strong> {suggestion.algorithm}</p>
                   <p><strong>Justification :</strong> {suggestion.rationale}</p>
@@ -152,3 +154,4 @@ export default function AlgorithmAdvisorCard({ onSuggestion }: AlgorithmAdvisorC
     </Card>
   );
 }
+
