@@ -13,48 +13,44 @@ import { ImageIcon, Music, FileText, FileQuestion, Layers, ArrowRight } from "lu
 const tools = [
   {
     name: "Stéganographie d'Image",
-    description: "Cachez des messages dans des fichiers image (PNG, JPG).",
+    description: "Cachez des messages dans des fichiers image (PNG).", // JPG retiré car non implémenté
     icon: <ImageIcon className="w-10 h-10 text-primary" />,
     href: "/image-steg",
     status: "available",
   },
   {
     name: "Stéganographie Audio",
-    description: "Intégrez des données dans des fichiers audio (MP3, WAV).",
+    description: "Intégrez des données dans des fichiers audio (WAV).", // Modifié: MP3 retiré
     icon: <Music className="w-10 h-10 text-primary" />,
     href: "/audio-steg",
-    status: "available", // Changed from upcoming
+    status: "available", 
   },
   {
     name: "Stéganographie de Texte",
     description: "Dissimulez des messages dans des fichiers texte.",
     icon: <FileText className="w-10 h-10 text-primary" />,
     href: "/text-steg",
-    status: "available", // Changed from upcoming
+    status: "available", 
   },
   {
     name: "Stéganographie PDF",
     description: "Cachez des informations dans des documents PDF.",
     icon: <FileQuestion className="w-10 h-10 text-primary" />,
     href: "/pdf-steg",
-    status: "available", // Changed from upcoming
+    status: "available", 
   },
   {
     name: "Traitement par Lots",
     description: "Traitez plusieurs fichiers à la fois.",
     icon: <Layers className="w-10 h-10 text-primary" />,
     href: "/batch-processing",
-    status: "available", // Changed from upcoming
+    status: "available", 
   },
 ];
 
 export default function HomePage() {
-  // Minimal handler for AI suggestion on the homepage
-  // The card itself displays the suggestion and shows a toast
   const handleAiSuggestionHomepage = (suggestion: AlgorithmAdvisorOutput) => {
     console.log("AI Suggestion on homepage:", suggestion);
-    // Potentially show a global toast or notification if needed,
-    // but AlgorithmAdvisorCard already shows its own toast.
   };
 
   return (

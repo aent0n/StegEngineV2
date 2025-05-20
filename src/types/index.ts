@@ -5,7 +5,7 @@ export interface SteganographyAlgorithm {
   id: string;
   name: string;
   description: string;
-  supportedFileTypes: string[]; // e.g., ['image/png', 'audio/mpeg', 'text/plain']
+  supportedFileTypes: string[]; // e.g., ['image/png', 'audio/wav', 'text/plain']
   isMetadataBased?: boolean; // Flag for metadata algorithms
 }
 
@@ -43,7 +43,7 @@ export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf' | 'video';
 
 export const fileTypeOptions: { value: FileTypeOptionValue, label: string }[] = [
   { value: 'image', label: 'Image (PNG, JPG)' },
-  { value: 'audio', label: 'Audio (MP3, WAV)' },
+  { value: 'audio', label: 'Audio (WAV)' }, // Modifié: MP3 retiré
   { value: 'text', label: 'Texte (TXT, DOCX)' },
   { value: 'pdf', label: 'Document PDF' },
   { value: 'video', label: 'Vidéo (MP4, AVI)' },
@@ -88,4 +88,3 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
   { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
 ];
-
