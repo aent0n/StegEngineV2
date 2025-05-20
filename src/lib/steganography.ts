@@ -1,25 +1,22 @@
 
-// Helper functions for LSB steganography
+import type { CapacityInfo } from '@/types';
 
-/**
- * Encodes a string to a Uint8Array using UTF-8.
- */
+// --- UTF-8 Helpers ---
 function utf8Encode(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
 
-/**
- * Decodes a Uint8Array (UTF-8) to a string.
- */
 function utf8Decode(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) {
+    console.error("Erreur de décodage UTF-8:", e);
+    throw new Error("Impossible d'extraire le message : encodage UTF-8 invalide ou caractères corrompus.");
+  }
 }
 
-/**
- * Converts a string to its UTF-8 binary representation.
- * Each byte of the UTF-8 encoded string is converted to its 8-bit binary form.
- */
-function textToBinary(text: string): string {
+// --- LSB Specific Helpers ---
+function textToBinaryLSB(text: string): string {
   const bytes = utf8Encode(text);
   let binaryString = "";
   for (const byte of bytes) {
@@ -28,44 +25,23 @@ function textToBinary(text: string): string {
   return binaryString;
 }
 
-/**
- * Converts a binary string (representing UTF-8 bytes) back to its text representation.
- */
-function binaryToText(binary: string): string {
+function binaryToTextLSB(binary: string): string {
   if (binary.length % 8 !== 0) {
-    // This situation might indicate data corruption or an incomplete stream.
-    // For robust handling, one might throw an error or attempt partial decoding.
-    // Given the fixed-length header, this should ideally not happen with valid stego images.
-    console.warn("La longueur de la chaîne binaire n'est pas un multiple de 8. Corruption de données potentielle.");
-    // Truncate to the nearest multiple of 8 for processing.
-    // binary = binary.substring(0, Math.floor(binary.length / 8) * 8);
-    // Or throw an error if this is critical:
-    throw new Error("Impossible d'extraire le message : la longueur des données binaires est invalide.");
+    throw new Error("Impossible d'extraire le message LSB : la longueur des données binaires est invalide.");
   }
   const bytes = new Uint8Array(binary.length / 8);
   for (let i = 0; i < bytes.length; i++) {
     const byteString = binary.substring(i * 8, (i + 1) * 8);
     bytes[i] = parseInt(byteString, 2);
   }
-  try {
-    return utf8Decode(bytes);
-  } catch (e) {
-    console.error("Erreur de décodage UTF-8:", e);
-    throw new Error("Impossible d'extraire le message : encodage UTF-8 invalide. Le message est peut-être corrompu.");
-  }
+  return utf8Decode(bytes);
 }
 
-/**
- * Converts a decimal number to a binary string, padded to a specific number of bits.
- */
-function numberToBinary(num: number, bits: number): string {
+function numberToBinaryLSB(num: number, bits: number): string {
   const binary = num.toString(2);
   return '0'.repeat(Math.max(0, bits - binary.length)) + binary;
 }
 
-/**
- * Reads an image file and returns its ImageData.
- */
 async function getImageData(file: File): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -77,75 +53,140 @@ async function getImageData(file: File): Promise<ImageData> {
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          return reject(new Error('Could not get canvas context.'));
+          return reject(new Error('Impossible d\'obtenir le contexte du canvas.'));
         }
         ctx.drawImage(img, 0, 0);
         resolve(ctx.getImageData(0, 0, img.width, img.height));
       };
-      img.onerror = () => reject(new Error('Failed to load image for canvas processing.'));
+      img.onerror = () => reject(new Error('Échec du chargement de l\'image pour le traitement canvas.'));
       if (e.target?.result) {
         img.src = e.target.result as string;
       } else {
-        reject(new Error('FileReader did not return a result.'));
+        reject(new Error('FileReader n\'a pas retourné de résultat.'));
       }
     };
-    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.onerror = () => reject(new Error('Échec de la lecture du fichier.'));
     reader.readAsDataURL(file);
   });
 }
 
-const MESSAGE_LENGTH_BITS = 32; // Using 32 bits to store the length of the message payload (in bits)
+const MESSAGE_LENGTH_BITS_LSB = 32; 
 
-/**
- * Calculates the maximum number of bytes that can be embedded in an ImageData object.
- * We use 3 bits per pixel (1 for R, 1 for G, 1 for B).
- * We reserve MESSAGE_LENGTH_BITS for storing the message length.
- */
-export function calculateCapacity(imageData: ImageData): number {
+function calculateLsbCapacity(imageData: ImageData): number {
   const totalPixels = imageData.width * imageData.height;
-  const totalBitsAvailable = totalPixels * 3; // R, G, B channels, 1 bit each
-  if (totalBitsAvailable < MESSAGE_LENGTH_BITS) {
-    return 0; // Not enough space for even the length metadata
+  const totalBitsAvailable = totalPixels * 3; 
+  if (totalBitsAvailable < MESSAGE_LENGTH_BITS_LSB) {
+    return 0; 
   }
-  const bitsForPayload = totalBitsAvailable - MESSAGE_LENGTH_BITS;
-  return Math.floor(bitsForPayload / 8); // Convert bits to bytes
+  const bitsForPayload = totalBitsAvailable - MESSAGE_LENGTH_BITS_LSB;
+  return Math.floor(bitsForPayload / 8); 
+}
+
+// --- PNG Chunk Constants & Helpers ---
+const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; // Estimate for metadata based algorithms
+const PNG_METADATA_KEYWORD = "StegEngineMessage";
+
+// Standard CRC32 checksum function
+function crc32(bytes: Uint8Array, start: number = 0, length: number = bytes.length - start): number {
+    let crc = 0xFFFFFFFF;
+    const crcTable = crc32.table || (crc32.table = (() => {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let k = 0; k < 8; k++) {
+                c = ((c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+            }
+            table[i] = c;
+        }
+        return table;
+    })());
+
+    for (let i = start, l = start + length; i < l; i++) {
+        crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
+    }
+    return crc ^ 0xFFFFFFFF;
+}
+crc32.table = null as unknown as Uint32Array; // Static property for memoization
+
+
+// --- Public Steganography Functions ---
+
+export async function getCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
+  if (file.type !== 'image/png') {
+    throw new Error('Seuls les fichiers PNG sont pris en charge pour cet outil.');
+  }
+
+  if (algorithmId === 'png_metadata_text') {
+    let width = 0, height = 0;
+    try { // Try to get dimensions, but don't fail if it's just for capacity estimate
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = url;
+        });
+        width = img.width;
+        height = img.height;
+        URL.revokeObjectURL(url);
+    } catch (e) { /* ignore, dimensions are optional for estimate */ }
+    return { capacityBytes: METADATA_CAPACITY_ESTIMATE_BYTES, width, height, isEstimate: true };
+  } else if (algorithmId === 'lsb_image_png') {
+    const imageData = await getImageData(file);
+    return {
+      capacityBytes: calculateLsbCapacity(imageData),
+      width: imageData.width,
+      height: imageData.height,
+      isEstimate: false,
+    };
+  }
+  throw new Error(`Algorithme d'image non reconnu pour le calcul de capacité: ${algorithmId}`);
 }
 
 
-/**
- * Embeds a message into an image file (PNG).
- * @param file The image File object (must be PNG).
- * @param message The string message to embed.
- * @returns A Promise that resolves with the data URI of the new image with the embedded message.
- */
-export async function embedMessageInImage(file: File, message: string): Promise<string> {
-  if (file.type !== 'image/png') {
-    throw new Error('Seuls les fichiers PNG sont pris en charge pour l\'intégration LSB.');
+export async function embedMessageInImage(file: File, message: string, algorithmId: string): Promise<string> {
+  if (algorithmId === 'lsb_image_png') {
+    return embedMessageInLsbPng(file, message);
+  } else if (algorithmId === 'png_metadata_text') {
+    return embedMessageInPngMetadata(file, message);
   }
+  throw new Error(`Algorithme d'intégration d'image non supporté: ${algorithmId}`);
+}
 
+export async function extractMessageFromImage(file: File, algorithmId: string): Promise<string> {
+  if (algorithmId === 'lsb_image_png') {
+    return extractMessageFromLsbPng(file);
+  } else if (algorithmId === 'png_metadata_text') {
+    return extractMessageFromPngMetadata(file);
+  }
+  throw new Error(`Algorithme d'extraction d'image non supporté: ${algorithmId}`);
+}
+
+// --- LSB PNG Implementation ---
+async function embedMessageInLsbPng(file: File, message: string): Promise<string> {
   const imageData = await getImageData(file);
-  const capacityBytes = calculateCapacity(imageData);
-  const messageBinary = textToBinary(message); // Uses UTF-8 aware textToBinary
+  const capacityBytes = calculateLsbCapacity(imageData);
+  const messageBinary = textToBinaryLSB(message);
   const messageLengthInBits = messageBinary.length;
 
   if (Math.ceil(messageLengthInBits / 8) > capacityBytes) {
     throw new Error(
-      `Message trop long (${Math.ceil(messageLengthInBits/8)} octets) pour l'image sélectionnée (capacité: ${capacityBytes} octets).`
+      `Message trop long (${Math.ceil(messageLengthInBits/8)} octets) pour l'image sélectionnée (capacité LSB: ${capacityBytes} octets).`
     );
   }
 
-  const messageLengthBinary = numberToBinary(messageLengthInBits, MESSAGE_LENGTH_BITS);
+  const messageLengthBinary = numberToBinaryLSB(messageLengthInBits, MESSAGE_LENGTH_BITS_LSB);
   const dataToEmbedBinary = messageLengthBinary + messageBinary;
 
-  const data = imageData.data; // Uint8ClampedArray: [R, G, B, A, R, G, B, A, ...]
+  const data = imageData.data;
   let bitIndex = 0;
 
   for (let i = 0; i < data.length && bitIndex < dataToEmbedBinary.length; i += 4) {
-    // Modify R, G, B channels. Alpha (A) channel is data[i+3] and is skipped.
     for (let channel = 0; channel < 3; channel++) {
       if (bitIndex < dataToEmbedBinary.length) {
         const bitToEmbed = parseInt(dataToEmbedBinary[bitIndex], 10);
-        data[i + channel] = (data[i + channel] & 0xFE) | bitToEmbed; // Clear LSB and set new bit
+        data[i + channel] = (data[i + channel] & 0xFE) | bitToEmbed;
         bitIndex++;
       } else {
         break;
@@ -153,39 +194,26 @@ export async function embedMessageInImage(file: File, message: string): Promise<
     }
   }
 
-  // Create a new canvas to draw the modified image data
   const canvas = document.createElement('canvas');
   canvas.width = imageData.width;
   canvas.height = imageData.height;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    throw new Error('Could not get canvas context to write modified data.');
+    throw new Error('Impossible d\'obtenir le contexte du canvas pour écrire les données modifiées.');
   }
   ctx.putImageData(imageData, 0, 0);
-
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL('image/png'); // This returns a Data URI
 }
 
-
-/**
- * Extracts a hidden message from an image file (PNG).
- * @param file The image File object (must be PNG) containing the hidden message.
- * @returns A Promise that resolves with the extracted string message.
- */
-export async function extractMessageFromImage(file: File): Promise<string> {
-  if (file.type !== 'image/png') {
-    throw new Error('Seuls les fichiers PNG sont pris en charge pour l\'extraction LSB.');
-  }
-
+async function extractMessageFromLsbPng(file: File): Promise<string> {
   const imageData = await getImageData(file);
   const data = imageData.data;
   let extractedLengthBits = '';
-
-  // 1. Extract message length (first MESSAGE_LENGTH_BITS bits)
   let lengthBitsRead = 0;
-  for (let i = 0; i < data.length && lengthBitsRead < MESSAGE_LENGTH_BITS; i += 4) {
+
+  for (let i = 0; i < data.length && lengthBitsRead < MESSAGE_LENGTH_BITS_LSB; i += 4) {
     for (let channel = 0; channel < 3; channel++) {
-      if (lengthBitsRead < MESSAGE_LENGTH_BITS) {
+      if (lengthBitsRead < MESSAGE_LENGTH_BITS_LSB) {
         extractedLengthBits += (data[i + channel] & 1).toString();
         lengthBitsRead++;
       } else {
@@ -194,37 +222,31 @@ export async function extractMessageFromImage(file: File): Promise<string> {
     }
   }
   
-  if (lengthBitsRead < MESSAGE_LENGTH_BITS) {
-    throw new Error("Impossible d'extraire la longueur complète du message. Le fichier est peut-être trop petit ou corrompu.");
+  if (lengthBitsRead < MESSAGE_LENGTH_BITS_LSB) {
+    throw new Error("Impossible d'extraire la longueur LSB complète. Fichier trop petit ou corrompu.");
   }
 
   const messageLengthInBits = parseInt(extractedLengthBits, 2);
 
-  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) { // Allow 0 for empty message
-    throw new Error("Impossible de déterminer la longueur du message caché, ou format de longueur invalide.");
+  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) {
+    throw new Error("Impossible de déterminer la longueur du message LSB caché, ou format de longueur invalide.");
   }
-
-  if (messageLengthInBits === 0) {
-    return ""; // Valid empty message
-  }
+  if (messageLengthInBits === 0) return "";
   
-  const capacityBytes = calculateCapacity(imageData); // capacity of payload in bytes
+  const capacityBytes = calculateLsbCapacity(imageData);
   const maxPayloadBits = capacityBytes * 8;
 
   if (messageLengthInBits > maxPayloadBits) {
-      throw new Error(`La longueur de message annoncée (${Math.ceil(messageLengthInBits/8)} octets / ${messageLengthInBits} bits) dépasse la capacité de l'image (${capacityBytes} octets / ${maxPayloadBits} bits). Le fichier est peut-être corrompu ou n'a pas été encodé par cet outil.`);
+      throw new Error(`Longueur de message LSB annoncée (${Math.ceil(messageLengthInBits/8)} octets) dépasse la capacité de l'image (${capacityBytes} octets). Fichier corrompu ?`);
   }
 
-  // 2. Extract message payload
   let extractedMessageBits = '';
   let messageBitsRead = 0;
-  // Start reading bits for the payload AFTER the bits used for the length
-  let dataStreamBitIndex = 0; // Overall bit position in the image's steganographic data space
+  let dataStreamBitIndex = 0;
 
   for (let i = 0; i < data.length && messageBitsRead < messageLengthInBits; i += 4) {
     for (let channel = 0; channel < 3; channel++) { 
-      // Only start collecting message bits after skipping past the length bits
-      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS) { 
+      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS_LSB) { 
         if (messageBitsRead < messageLengthInBits) {
           extractedMessageBits += (data[i + channel] & 1).toString();
           messageBitsRead++;
@@ -232,36 +254,154 @@ export async function extractMessageFromImage(file: File): Promise<string> {
           break; 
         }
       }
-      dataStreamBitIndex++; // Increment for every potential bit position in the stego data stream
-      
-      // Optimization: if we've read all needed length bits and all message bits, stop.
-      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
-          break;
-      }
+      dataStreamBitIndex++;
+      if (dataStreamBitIndex >= MESSAGE_LENGTH_BITS_LSB + messageLengthInBits) break;
     }
-    if (messageBitsRead >= messageLengthInBits || dataStreamBitIndex >= MESSAGE_LENGTH_BITS + messageLengthInBits) {
-        break; 
-    }
+    if (messageBitsRead >= messageLengthInBits || dataStreamBitIndex >= MESSAGE_LENGTH_BITS_LSB + messageLengthInBits) break; 
   }
 
   if (messageBitsRead < messageLengthInBits) {
-    throw new Error("N'a pas pu extraire le message complet. Le fichier est peut-être corrompu ou incomplet.");
+    throw new Error("N'a pas pu extraire le message LSB complet. Fichier corrompu ou incomplet.");
   }
-
-  return binaryToText(extractedMessageBits); // Uses UTF-8 aware binaryToText
+  return binaryToTextLSB(extractedMessageBits);
 }
 
-/**
- * Utility to get ImageData from a file for capacity calculation without full processing.
- */
-export async function getCapacityInfo(file: File): Promise<{ capacityBytes: number, width: number, height: number }> {
-  if (file.type !== 'image/png') {
-    throw new Error('Seuls les fichiers PNG sont pris en charge pour le calcul de capacité.');
+
+// --- PNG Metadata (tEXt Chunk) Implementation ---
+async function embedMessageInPngMetadata(file: File, message: string): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const originalBytes = new Uint8Array(buffer);
+
+  if (!originalBytes.slice(0, 8).every((val, idx) => val === PNG_SIGNATURE[idx])) {
+    throw new Error("Format de fichier PNG invalide ou signature manquante.");
   }
-  const imageData = await getImageData(file);
-  return {
-    capacityBytes: calculateCapacity(imageData),
-    width: imageData.width,
-    height: imageData.height,
-  };
+
+  const messageBytes = utf8Encode(message);
+  const keywordBytes = utf8Encode(PNG_METADATA_KEYWORD);
+  
+  // tEXt chunk data: keyword (no null) + null separator + text
+  const textChunkData = new Uint8Array(keywordBytes.length + 1 + messageBytes.length);
+  textChunkData.set(keywordBytes, 0);
+  textChunkData[keywordBytes.length] = 0; // Null separator
+  textChunkData.set(messageBytes, keywordBytes.length + 1);
+
+  const newChunks: Uint8Array[] = [];
+  let offset = 8; // Skip PNG signature
+
+  // Iterate over existing chunks, remove old StegEngineMessage chunk
+  while (offset < originalBytes.length) {
+    const view = new DataView(originalBytes.buffer, offset);
+    const length = view.getUint32(0, false);
+    const typeBytes = originalBytes.slice(offset + 4, offset + 8);
+    const type = String.fromCharCode(...typeBytes);
+    
+    const currentChunk = originalBytes.slice(offset, offset + 12 + length); // Full chunk including length, type, data, CRC
+
+    if (type === 'IEND') { // Stop before IEND, we'll add it back later
+      break; 
+    }
+
+    if (type === 'tEXt') {
+      const currentKeywordBytes = originalBytes.slice(offset + 8, offset + 8 + keywordBytes.length);
+      const isOurKeyword = keywordBytes.every((val, idx) => val === currentKeywordBytes[idx]) && originalBytes[offset + 8 + keywordBytes.length] === 0;
+      if (!isOurKeyword) {
+        newChunks.push(currentChunk);
+      }
+    } else {
+      newChunks.push(currentChunk);
+    }
+    offset += 12 + length;
+  }
+
+  // Create the new tEXt chunk
+  const tEXtTypeBytes = utf8Encode("tEXt");
+  const chunkContentForCrc = new Uint8Array(tEXtTypeBytes.length + textChunkData.length);
+  chunkContentForCrc.set(tEXtTypeBytes, 0);
+  chunkContentForCrc.set(textChunkData, tEXtTypeBytes.length);
+  
+  const crc = crc32(chunkContentForCrc);
+
+  const newTextChunk = new Uint8Array(12 + textChunkData.length);
+  const newChunkView = new DataView(newTextChunk.buffer);
+  newChunkView.setUint32(0, textChunkData.length, false); // Length of data part
+  newTextChunk.set(tEXtTypeBytes, 4);                     // Type 'tEXt'
+  newTextChunk.set(textChunkData, 8);                     // Data
+  newChunkView.setUint32(8 + textChunkData.length, crc, false); // CRC
+
+  newChunks.push(newTextChunk);
+
+  // Add back IEND chunk (it's always 0-length data, specific CRC)
+  const iendChunk = new Uint8Array([0,0,0,0, 73,69,78,68, 174,66,96,130]); // Length 0, Type IEND, standard CRC
+  newChunks.push(iendChunk);
+
+  // Concatenate all parts: signature + processed chunks
+  let totalNewLength = PNG_SIGNATURE.length;
+  newChunks.forEach(chunk => totalNewLength += chunk.length);
+  
+  const newPngBytes = new Uint8Array(totalNewLength);
+  newPngBytes.set(PNG_SIGNATURE, 0);
+  let currentPosition = PNG_SIGNATURE.length;
+  for (const chunk of newChunks) {
+    newPngBytes.set(chunk, currentPosition);
+    currentPosition += chunk.length;
+  }
+
+  const blob = new Blob([newPngBytes], { type: 'image/png' });
+  return URL.createObjectURL(blob);
+}
+
+async function extractMessageFromPngMetadata(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  if (!bytes.slice(0, 8).every((val, idx) => val === PNG_SIGNATURE[idx])) {
+    throw new Error("Format de fichier PNG invalide ou signature manquante.");
+  }
+
+  let offset = 8;
+  const keywordBytes = utf8Encode(PNG_METADATA_KEYWORD);
+
+  while (offset < bytes.length) {
+    const view = new DataView(bytes.buffer, offset);
+    const length = view.getUint32(0, false);
+    const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
+
+    if (type === 'tEXt') {
+      const chunkDataStart = offset + 8;
+      const chunkDataEnd = chunkDataStart + length;
+      
+      // Check for keyword
+      if (length > keywordBytes.length && bytes[chunkDataStart + keywordBytes.length] === 0) { // Check for null terminator
+        const currentKeyword = bytes.slice(chunkDataStart, chunkDataStart + keywordBytes.length);
+        if (keywordBytes.every((val, idx) => val === currentKeyword[idx])) {
+          // Keyword matches, extract text
+          const messageData = bytes.slice(chunkDataStart + keywordBytes.length + 1, chunkDataEnd);
+          return utf8Decode(messageData);
+        }
+      }
+    }
+    
+    if (type === 'IEND') break; // Stop at IEND
+    offset += 12 + length; // Move to next chunk (length + type + data + CRC)
+  }
+  return ""; // No message found or keyword didn't match
+}
+
+// Helper to convert Object URL to Data URI, useful for consistent export/preview
+export async function convertObjectUrlToDataUri(objectUrl: string): Promise<string> {
+  const response = await fetch(objectUrl);
+  if (!response.ok) throw new Error(`Erreur HTTP lors de la récupération de l'Object URL: ${response.status} ${response.statusText}`);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        resolve(reader.result as string);
+      } else {
+        reject(new Error("Impossible de convertir l'Object URL en Data URI (résultat vide)."));
+      }
+    };
+    reader.onerror = (error) => reject(new Error(`Erreur FileReader: ${error}`));
+    reader.readAsDataURL(blob);
+  });
 }

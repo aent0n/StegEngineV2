@@ -25,7 +25,7 @@ interface FileUploadCardProps {
   acceptedFileTypes?: string; 
   supportedFileTypesMessage?: string;
   capacityInfo: CapacityInfo | null;
-  isMetadataAlgorithm?: boolean; // To adjust UI for metadata-based algorithms
+  isMetadataAlgorithm?: boolean;
 }
 
 const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
@@ -53,12 +53,12 @@ export default function FileUploadCard({
 }: FileUploadCardProps) {
   
   const messageBytes = operationMode === 'embed' && messageToEmbed ? new TextEncoder().encode(messageToEmbed).length : 0;
-  const percentageUsed = capacityInfo && capacityInfo.capacityBytes > 0 && !capacityInfo.isEstimate
+  const percentageUsed = capacityInfo && capacityInfo.capacityBytes > 0 && !capacityInfo.isEstimate && !isMetadataAlgorithm
     ? Math.min(100, Math.max(0, (messageBytes / capacityInfo.capacityBytes) * 100)) 
     : 0;
 
   const displayCapacityInfo = operationMode === 'embed' || (operationMode === 'extract' && capacityInfo);
-  const showProgressBar = operationMode === 'embed' && capacityInfo && !capacityInfo.isEstimate && capacityInfo.capacityBytes > 0;
+  const showProgressBar = operationMode === 'embed' && capacityInfo && !capacityInfo.isEstimate && capacityInfo.capacityBytes > 0 && !isMetadataAlgorithm;
 
 
   return (
@@ -112,7 +112,7 @@ export default function FileUploadCard({
                       <>
                         <p className="mt-1">
                           Message : {messageBytes} octets / 
-                          {capacityInfo.isEstimate ? " Capacité estimée" : " Capacité max"} : {capacityInfo.capacityBytes} octets
+                          {capacityInfo.isEstimate || isMetadataAlgorithm ? " Capacité estimée" : " Capacité max"} : {capacityInfo.capacityBytes} octets
                         </p>
                         {showProgressBar && (
                           <div className="w-full mt-1 relative">
@@ -121,25 +121,28 @@ export default function FileUploadCard({
                               className="w-full h-2.5" 
                               aria-label={`Espace utilisé pour le message ${percentageUsed.toFixed(1)}%`}
                             />
-                             <p className={cn(
-                                "text-xs text-center mt-1",
-                                messageBytes > capacityInfo.capacityBytes ? "text-red-500" : "text-muted-foreground"
-                              )}>
+                             <p className="text-xs text-center mt-1">
                                 Utilisation : {percentageUsed.toFixed(1)}%
                               </p>
                           </div>
                         )}
-                        {messageBytes > 0 && capacityInfo.capacityBytes > 0 && messageBytes > capacityInfo.capacityBytes && !capacityInfo.isEstimate && (
+                        {messageBytes > 0 && capacityInfo.capacityBytes > 0 && messageBytes > capacityInfo.capacityBytes && !capacityInfo.isEstimate && !isMetadataAlgorithm && (
                             <p className="text-xs text-red-500 flex items-center justify-center gap-1 mt-1">
                                 <AlertCircle size={14} />
                                 Le message est trop long.
+                            </p>
+                        )}
+                         {messageBytes > 0 && capacityInfo.capacityBytes > 0 && messageBytes > capacityInfo.capacityBytes && (capacityInfo.isEstimate || isMetadataAlgorithm) && (
+                            <p className="text-xs text-orange-500 flex items-center justify-center gap-1 mt-1">
+                                <AlertCircle size={14} />
+                                Le message pourrait dépasser la capacité estimée.
                             </p>
                         )}
                       </>
                     )}
                      {operationMode === 'extract' && (
                        <p className="mt-1">
-                         {capacityInfo.isEstimate ? "Capacité stéganographique estimée" : "Capacité stéganographique"} : {capacityInfo.capacityBytes} octets
+                         {capacityInfo.isEstimate || isMetadataAlgorithm ? "Capacité stéganographique estimée" : "Capacité stéganographique"} : {capacityInfo.capacityBytes} octets
                        </p>
                      )}
                   </div>
@@ -167,4 +170,3 @@ export default function FileUploadCard({
     </Card>
   );
 }
-

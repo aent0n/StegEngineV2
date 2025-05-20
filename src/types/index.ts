@@ -21,8 +21,8 @@ export interface CapacityInfo {
 export interface StegToolState {
   carrierFile: File | null;
   fileName: string | null;
-  filePreviewUrl: string | null; // Preview of original uploaded file or Object URL for audio
-  stegoFileDataUri: string | null; // Data URI of the image/audio with embedded message (after embed operation)
+  filePreviewUrl: string | null; // Preview of original uploaded file or Object URL for audio/image
+  stegoFileDataUri: string | null; // Object URL or Data URI of the image/audio with embedded message (after embed operation)
   
   messageToEmbed: string; 
   extractedMessage: string | null; 
@@ -56,6 +56,14 @@ export const lsbPngAlgorithm: SteganographyAlgorithm = {
   supportedFileTypes: ['image/png'] 
 };
 
+export const pngMetadataTextAlgorithm: SteganographyAlgorithm = {
+  id: 'png_metadata_text',
+  name: 'Métadonnées PNG (tEXt Chunk)',
+  description: 'Cache le message dans un chunk tEXt (commentaire personnalisé) d\'un fichier PNG. N\'altère pas les pixels.',
+  supportedFileTypes: ['image/png'],
+  isMetadataBased: true,
+};
+
 export const lsbAudioWavAlgorithm: SteganographyAlgorithm = {
   id: 'lsb_audio_wav',
   name: 'LSB (Audio WAV - 16 bits)',
@@ -73,9 +81,9 @@ export const wavMetadataCommentAlgorithm: SteganographyAlgorithm = {
 
 export const mockAlgorithms: SteganographyAlgorithm[] = [
   lsbPngAlgorithm,
+  pngMetadataTextAlgorithm,
   lsbAudioWavAlgorithm,
   wavMetadataCommentAlgorithm,
-  // Les algorithmes suivants restent simulés pour l'instant
   { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
   { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
   { id: 'whitespace_text', name: 'Stéganographie par Espaces (Texte) - Simulé', description: 'Utilise des caractères d\'espacement pour cacher des données dans les fichiers texte (simulation).', supportedFileTypes: ['text/plain'] },
