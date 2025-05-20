@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -5,21 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, FileText, Image as ImageIcon, Music, Video, FileQuestion } from "lucide-react";
+import { UploadCloud, FileText, Image as ImageIconLucide, Music, Video, FileQuestion } from "lucide-react";
 import Image from "next/image";
+import type { OperationMode } from '@/types';
 
 interface FileUploadCardProps {
   carrierFile: File | null;
   fileName: string | null;
   filePreviewUrl: string | null;
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  message: string;
-  onMessageChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  
+  messageToEmbed: string;
+  onMessageToEmbedChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  
+  extractedMessage: string | null;
+  operationMode: OperationMode;
 }
 
-const FileIcon = ({ fileType }: { fileType: string | null }) => {
+const FileIconDisplay = ({ fileType }: { fileType: string | null }) => {
   if (!fileType) return <FileQuestion className="w-16 h-16 text-muted-foreground" />;
-  if (fileType.startsWith("image/")) return <ImageIcon className="w-16 h-16 text-muted-foreground" />;
+  if (fileType.startsWith("image/")) return <ImageIconLucide className="w-16 h-16 text-muted-foreground" />;
   if (fileType.startsWith("audio/")) return <Music className="w-16 h-16 text-muted-foreground" />;
   if (fileType.startsWith("video/")) return <Video className="w-16 h-16 text-muted-foreground" />;
   if (fileType.startsWith("text/") || fileType === "application/pdf") return <FileText className="w-16 h-16 text-muted-foreground" />;
@@ -32,14 +38,21 @@ export default function FileUploadCard({
   fileName,
   filePreviewUrl,
   onFileChange,
-  message,
-  onMessageChange,
+  messageToEmbed,
+  onMessageToEmbedChange,
+  extractedMessage,
+  operationMode,
 }: FileUploadCardProps) {
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
-        <CardTitle className="text-xl">Fichier Porteur & Message Secret</CardTitle>
-        <CardDescription>Téléchargez le fichier dans lequel cacher votre message, et saisissez votre message secret.</CardDescription>
+        <CardTitle className="text-xl">Fichier Porteur {operationMode === 'extract' ? ' & Message Extrait' : '& Message Secret'}</CardTitle>
+        <CardDescription>
+          {operationMode === 'embed' 
+            ? "Téléchargez le fichier pour cacher votre message, et saisissez votre message."
+            : "Téléchargez le fichier contenant un message caché pour l'extraire."
+          }
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -52,7 +65,7 @@ export default function FileUploadCard({
             aria-describedby="fileHelp"
           />
           <p id="fileHelp" className="text-sm text-muted-foreground">
-            Types supportés : Images, Audio, Vidéo, Texte, PDF.
+            Types supportés pour cet outil : Images (PNG, JPG).
           </p>
           {fileName && (
             <div className="mt-4 p-4 border rounded-lg bg-secondary/50 flex items-center gap-4">
@@ -66,7 +79,7 @@ export default function FileUploadCard({
                   data-ai-hint="abstract texture" 
                 />
               ) : (
-                <FileIcon fileType={carrierFile?.type || null} />
+                <FileIconDisplay fileType={carrierFile?.type || null} />
               )}
               <div>
                 <p className="font-medium text-secondary-foreground">{fileName}</p>
@@ -76,18 +89,45 @@ export default function FileUploadCard({
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="secretMessage" className="text-base">2. Votre Message Secret</Label>
-          <Textarea
-            id="secretMessage"
-            value={message}
-            onChange={onMessageChange}
-            placeholder="Saisissez le message que vous souhaitez cacher..."
-            rows={5}
-            className="text-base"
-            aria-label="Saisie du message secret"
-          />
-        </div>
+        {operationMode === 'embed' && (
+          <div className="space-y-2">
+            <Label htmlFor="secretMessage" className="text-base">2. Votre Message Secret à Cacher</Label>
+            <Textarea
+              id="secretMessage"
+              value={messageToEmbed}
+              onChange={onMessageToEmbedChange}
+              placeholder="Saisissez le message que vous souhaitez cacher..."
+              rows={5}
+              className="text-base"
+              aria-label="Saisie du message secret à cacher"
+            />
+          </div>
+        )}
+
+        {operationMode === 'extract' && (
+          <div className="space-y-2">
+            <Label htmlFor="extractedMessageDisplay" className="text-base">2. Message Extrait</Label>
+            {extractedMessage !== null ? (
+              <Textarea
+                id="extractedMessageDisplay"
+                value={extractedMessage}
+                readOnly
+                rows={5}
+                className="text-base bg-muted/50"
+                aria-label="Message extrait"
+                placeholder="Aucun message extrait pour le moment."
+              />
+            ) : (
+              <div 
+                id="extractedMessageDisplay"
+                className="p-4 border rounded-lg bg-muted/50 min-h-[100px] text-muted-foreground flex items-center justify-center text-sm"
+                aria-label="Message extrait"
+              >
+                Le message extrait apparaîtra ici...
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
