@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
-import type { SteganographyAlgorithm, OperationMode, ExtractedMessageDetail } from "@/types"; // Added ExtractedMessageDetail
+import type { SteganographyAlgorithm, OperationMode, ExtractedMessageDetail } from "@/types";
 import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2, FileText as FileTextIcon, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea"; 
 
@@ -21,7 +21,7 @@ interface AlgorithmActionsCardProps {
   onEmbed: () => void;
   onExportStegoFile: () => void;
   onExtract: () => void;
-  onCopyExtractedMessage: (message: string) => void; // Changed to accept message
+  onCopyExtractedMessage: (message: string) => void;
 
   isProcessing: boolean;
   isExporting: boolean; 
@@ -29,10 +29,9 @@ interface AlgorithmActionsCardProps {
   isEmbedPossible: boolean;
   isExportStegoFilePossible: boolean;
   isExtractPossible: boolean;
-  // isCopyExtractedMessagePossible: boolean; // Removed, handled internally
 
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
-  extractedMessages: ExtractedMessageDetail[] | null; // Changed from string | null
+  extractedMessages: ExtractedMessageDetail[] | null;
   
   isTextTool?: boolean;
   onCopyStegoText?: () => void;
@@ -55,9 +54,8 @@ export default function AlgorithmActionsCard({
   isEmbedPossible,
   isExportStegoFilePossible,
   isExtractPossible,
-  // isCopyExtractedMessagePossible, // Removed
   statusMessage,
-  extractedMessages, // Changed
+  extractedMessages,
   isTextTool = false,
   onCopyStegoText,
   isCopyStegoTextPossible,
@@ -69,7 +67,7 @@ export default function AlgorithmActionsCard({
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
         <CardTitle className="text-xl">Mode Opératoire & Actions</CardTitle>
-        <CardDescription>Choisissez un mode, un algorithme, puis lancez l'opération.</CardDescription>
+        <CardDescription>Choisissez un mode, {operationMode === 'embed' ? "un algorithme, " : ""}puis lancez l'opération.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs value={operationMode} onValueChange={(value) => onOperationModeChange(value as OperationMode)} className="w-full">
@@ -79,39 +77,43 @@ export default function AlgorithmActionsCard({
           </TabsList>
         </Tabs>
 
-        <div className="space-y-2">
-          <Label htmlFor="algorithmSelect" className="text-base">Sélectionner l'Algorithme</Label>
-          <Select 
-            value={selectedAlgorithmId || ""} 
-            onValueChange={onAlgorithmChange} 
-            disabled={algorithms.length === 0 || isProcessing }
-          >
-            <SelectTrigger id="algorithmSelect" className="text-base" aria-label="Sélectionner l'algorithme de stéganographie">
-              <SelectValue placeholder="Sélectionner un algorithme" />
-            </SelectTrigger>
-            <SelectContent>
-              {algorithms.length > 0 ? (
-                algorithms.map((algo) => (
-                  <SelectItem key={algo.id} value={algo.id} className="text-base">
-                    {algo.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="loading" disabled>Chargement des algorithmes...</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          {selectedAlgorithm && (
-            <p className="text-sm text-muted-foreground mt-2 p-2 bg-secondary/30 rounded-md">
-              {selectedAlgorithm.description}
-              {operationMode === 'extract' && (
-                <span className="block mt-1 text-xs italic text-primary">
-                  (Note: en mode Extraction, tous les algorithmes compatibles seront essayés.)
-                </span>
-              )}
+        {operationMode === 'embed' && (
+          <div className="space-y-2">
+            <Label htmlFor="algorithmSelect" className="text-base">Sélectionner l'Algorithme</Label>
+            <Select 
+              value={selectedAlgorithmId || ""} 
+              onValueChange={onAlgorithmChange} 
+              disabled={algorithms.length === 0 || isProcessing }
+            >
+              <SelectTrigger id="algorithmSelect" className="text-base" aria-label="Sélectionner l'algorithme de stéganographie">
+                <SelectValue placeholder="Sélectionner un algorithme" />
+              </SelectTrigger>
+              <SelectContent>
+                {algorithms.length > 0 ? (
+                  algorithms.map((algo) => (
+                    <SelectItem key={algo.id} value={algo.id} className="text-base">
+                      {algo.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="loading" disabled>Chargement des algorithmes...</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {selectedAlgorithm && (
+              <p className="text-sm text-muted-foreground mt-2 p-2 bg-secondary/30 rounded-md">
+                {selectedAlgorithm.description}
+              </p>
+            )}
+          </div>
+        )}
+        
+        {operationMode === 'extract' && selectedAlgorithm && (
+             <p className="text-sm text-muted-foreground mt-2 p-2 bg-secondary/30 rounded-md">
+                L'extraction tentera d'utiliser tous les algorithmes compatibles pour ce type de fichier.
             </p>
-          )}
-        </div>
+        )}
+
 
         {operationMode === 'embed' && (
           <div className="space-y-4"> 
@@ -246,4 +248,6 @@ export default function AlgorithmActionsCard({
     </Card>
   );
 }
+    
+
     
