@@ -70,7 +70,8 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
     pdfDoc.setProducer(producerValue);
     console.log("[PDF Embed] Tentative de définition du Producer à:", producerValue);
 
-    const modifiedPdfBytes = await pdfDoc.save();
+    // Save the PDF without allowing pdf-lib to update metadata (like Producer)
+    const modifiedPdfBytes = await pdfDoc.save({ updateMetadata: false });
     const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
     return URL.createObjectURL(blob);
 
