@@ -60,7 +60,7 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
         <div className="flex-shrink-0 mx-auto md:mx-0">
           <Image
-            src="/stegengine_hero.svg"
+            src="/stegengine_hero.svg" // Assurez-vous que ce fichier est dans /public
             alt="Logo Steg'Engine Hero"
             width={256} 
             height={256}
@@ -68,8 +68,9 @@ export default function HomePage() {
             data-ai-hint="owl shield logo"
             priority
             onError={(e) => {
-              (e.target as HTMLImageElement).onerror = null;
-              (e.target as HTMLImageElement).src = 'https://i.ibb.co/6739X3nZ/steglogo.png'; // Fallback to the header logo if hero SVG is missing
+              // Fallback si stegengine_hero.svg n'est pas trouvé
+              (e.target as HTMLImageElement).onerror = null; // Pour éviter des boucles d'erreur infinies
+              (e.target as HTMLImageElement).src = 'https://i.ibb.co/6739X3nZ/steglogo.png'; // Fallback vers le logo du header
             }}
           />
         </div>

@@ -9,33 +9,33 @@ body {
 
 @layer base {
   :root {
-    --background: 220 17% 96%; /* gray-100 from example */
-    --foreground: 215 28% 17%; /* gray-800 from example */
+    --background: 220 17% 96%; /* Main background: Very light indigo/gray */
+    --foreground: 215 28% 17%; /* Main text: Dark blue/gray */
 
-    --card: 0 0% 100%; /* white from example */
-    --card-foreground: 215 28% 17%; /* gray-800 for card text */
+    --card: 0 0% 100%; /* Card background: White */
+    --card-foreground: 215 28% 17%; /* Card text: Dark blue/gray */
 
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
 
-    --primary: 243 79% 59%; /* indigo-600 from example */
-    --primary-foreground: 0 0% 100%; /* white for text on primary */
+    --primary: 236 59% 47%; /* Primary: Deep indigo from PRD #3F51B5 */
+    --primary-foreground: 0 0% 100%; /* Text on primary: White */
 
-    --secondary: 231 100% 94%; /* indigo-100 for lighter backgrounds */
-    --secondary-foreground: 243 79% 59%; /* indigo-600 for text on secondary */
+    --secondary: 230 100% 97%; /* Secondary background: Very light indigo from PRD #E8EAF6 */
+    --secondary-foreground: 236 59% 47%; /* Text on secondary: Deep indigo */
 
-    --muted: 220 17% 90%; /* lighter gray */
-    --muted-foreground: 215 14% 34%; /* gray-600 from example */
+    --muted: 220 17% 90%; /* Muted background: Lighter gray */
+    --muted-foreground: 215 14% 34%; /* Muted text: Gray */
 
-    --accent: 232 37% 63%; /* Complementary violet from PRD, as HTML example uses primary for accents */
-    --accent-foreground: 0 0% 100%;
+    --accent: 233 35% 63%; /* Accent: Complementary violet from PRD #7986CB */
+    --accent-foreground: 0 0% 100%; /* Text on accent: White */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 88%; /* For borders, derived from gray shades */
-    --input: 220 13% 92%; /* For input backgrounds */
-    --ring: 243 79% 59%; /* Primary indigo for focus rings */
+    --border: 220 13% 88%; /* Borders: Light gray */
+    --input: 220 13% 92%; /* Input backgrounds: Slightly darker light gray */
+    --ring: 236 59% 47%; /* Focus rings: Deep indigo */
 
     --radius: 0.5rem;
 
@@ -49,58 +49,56 @@ body {
     --sidebar-border: 210 40% 40%;
     --sidebar-ring: 30 50% 60%;
     
-    --chart-1: 243 79% 59%; 
-    --chart-2: 232 37% 63%;  
-    --chart-3: 243 79% 70%; 
-    --chart-4: 232 37% 73%; 
-    --chart-5: 243 79% 80%;
+    --chart-1: 236 59% 47%; 
+    --chart-2: 233 35% 63%;  
+    --chart-3: 236 59% 60%; 
+    --chart-4: 233 35% 73%; 
+    --chart-5: 236 59% 70%;
   }
 
   .dark {
-    /* Keeping dark theme distinct for now, can be aligned later if needed */
-    /* For footer: bg-gray-800 text-white equivalent */
-    --background: 220 10% 10%; /* Dark gray */
-    --foreground: 220 15% 85%; /* Light gray */
+    --background: 215 28% 10%; /* Dark background: Very dark blue/gray */
+    --foreground: 220 15% 85%; /* Light gray text for dark mode */
 
-    --card: 220 10% 15%; 
+    --card: 215 28% 15%; /* Card background: Darker blue/gray */
     --card-foreground: 220 15% 85%;
 
-    --popover: 220 10% 15%;
+    --popover: 215 28% 15%;
     --popover-foreground: 220 15% 85%;
 
-    --primary: 243 70% 65%; /* Brighter indigo for dark mode */
+    --primary: 236 50% 65%; /* Primary: Brighter indigo for dark mode */
     --primary-foreground: 0 0% 100%; 
 
-    --secondary: 243 50% 30%; 
+    --secondary: 236 50% 25%; /* Secondary background: Darker indigo */
     --secondary-foreground: 220 15% 80%;
 
     --muted: 220 10% 25%;
     --muted-foreground: 220 15% 65%;
 
-    --accent: 232 50% 70%; 
-    --accent-foreground: 220 10% 10%; 
+    --accent: 233 45% 70%; /* Accent: Brighter violet for dark mode */
+    --accent-foreground: 215 28% 10%; 
     
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 10% 30%;
     --input: 220 10% 20%;
-    --ring: 243 70% 65%; 
+    --ring: 236 50% 65%; 
     
-    --chart-1: 243 70% 65%;
-    --chart-2: 232 50% 70%;
-    --chart-3: 243 60% 55%;
-    --chart-4: 232 40% 60%;
-    --chart-5: 243 50% 45%;
+    --chart-1: 236 50% 65%;
+    --chart-2: 233 45% 70%;
+    --chart-3: 236 60% 55%;
+    --chart-4: 233 40% 60%;
+    --chart-5: 236 50% 45%;
 
     --sidebar-background: 220 10% 8%;
     --sidebar-foreground: 220 15% 88%;
-    --sidebar-primary: 243 70% 65%;
+    --sidebar-primary: 236 50% 65%;
     --sidebar-primary-foreground: 220 10% 10%;
-    --sidebar-accent: 232 50% 70%;
+    --sidebar-accent: 233 45% 70%;
     --sidebar-accent-foreground: 220 10% 10%;
     --sidebar-border: 220 10% 20%;
-    --sidebar-ring: 243 70% 65%;
+    --sidebar-ring: 236 50% 65%;
   }
 }
 
@@ -109,30 +107,22 @@ body {
     @apply border-border;
   }
   body {
-    @apply text-foreground; /* Apply themed text color */
-    
-    /* Apply base background color from theme */
+    @apply text-foreground; 
     background-color: hsl(var(--background));
-
-    /* Layer gradient and noise on top */
-    background-image:
-      linear-gradient(135deg, hsla(220, 17%, 96%, 0.98) 0%, hsla(220, 17%, 96%, 1) 60%, hsla(243, 79%, 59%, 0.03) 100%),
+    background-image: 
+      linear-gradient(135deg, hsla(var(--background), 0.98) 0%, hsla(var(--background), 1) 60%, hsla(var(--primary), 0.03) 100%),
       url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
     background-blend-mode: overlay;
-    background-attachment: fixed; /* Keep background fixed during scroll */
+    background-attachment: fixed;
   }
 
   .dark body {
-    @apply text-foreground; /* Ensure dark theme text color is applied */
-    
-    /* Apply base background color from dark theme */
-    background-color: hsl(var(--background)); 
-    
-    /* Layer gradient and noise for dark theme */
-    background-image:
-      linear-gradient(135deg, hsla(220, 10%, 10%, 0.98) 0%, hsla(220, 10%, 10%, 1) 60%, hsla(243, 70%, 65%, 0.05) 100%),
+    @apply text-foreground;
+    background-color: hsl(var(--background));
+    background-image: 
+      linear-gradient(135deg, hsla(var(--background), 0.98) 0%, hsla(var(--background), 1) 60%, hsla(var(--primary), 0.05) 100%),
       url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.07'/%3E%3C/svg%3E");
-    background-blend-mode: overlay; /* 'screen' or 'color-dodge' could also be tested for dark mode noise visibility */
+    background-blend-mode: overlay;
     background-attachment: fixed;
   }
 }
