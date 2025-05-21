@@ -13,14 +13,14 @@ import { ImageIcon, Music, FileText, FileQuestion, Layers, ArrowRight } from "lu
 const tools = [
   {
     name: "Stéganographie d'Image",
-    description: "Cachez des messages dans des fichiers image (PNG).", // JPG retiré car non implémenté
+    description: "Cachez des messages dans des fichiers image (PNG).",
     icon: <ImageIcon className="w-10 h-10 text-primary" />,
     href: "/image-steg",
     status: "available",
   },
   {
     name: "Stéganographie Audio",
-    description: "Intégrez des données dans des fichiers audio (WAV).", // Modifié: MP3 retiré
+    description: "Intégrez des données dans des fichiers audio (WAV).",
     icon: <Music className="w-10 h-10 text-primary" />,
     href: "/audio-steg",
     status: "available", 
@@ -34,7 +34,7 @@ const tools = [
   },
   {
     name: "Stéganographie PDF",
-    description: "Cachez des informations dans des documents PDF.",
+    description: "Cachez des informations dans les métadonnées de documents PDF.",
     icon: <FileQuestion className="w-10 h-10 text-primary" />,
     href: "/pdf-steg",
     status: "available", 
@@ -50,6 +50,7 @@ const tools = [
 
 export default function HomePage() {
   const handleAiSuggestionHomepage = (suggestion: AlgorithmAdvisorOutput) => {
+    // Placeholder for homepage specific action if needed, for now, toast is handled by the card
     console.log("AI Suggestion on homepage:", suggestion);
   };
 

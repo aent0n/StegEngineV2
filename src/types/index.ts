@@ -101,9 +101,9 @@ export const zeroWidthCharsTextAlgorithm: SteganographyAlgorithm = {
 };
 
 export const pdfMetadataAlgorithm: SteganographyAlgorithm = {
-  id: 'pdf_metadata_simulated',
-  name: 'Métadonnées PDF (Simulé)',
-  description: 'Dissimulation de données dans les métadonnées d\'un fichier PDF (simulation, le fichier n\'est pas modifié).',
+  id: 'pdf_metadata_simulated', // ID remains same as it's what the page uses
+  name: 'Métadonnées PDF (Champ Sujet)',
+  description: 'Dissimulation de données dans le champ "Sujet" des métadonnées d\'un fichier PDF.',
   supportedFileTypes: ['application/pdf'],
   isMetadataBased: true,
 };
@@ -116,6 +116,5 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   whitespaceTextAlgorithm,
   zeroWidthCharsTextAlgorithm,
   pdfMetadataAlgorithm,
-  { id: 'dct_jpeg', name: 'DCT (JPEG) - Simulé', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (simulation).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
-  // { id: 'metadata_pdf', name: 'Dissimulation de Métadonnées (PDF) - Simulé', description: 'Cache les données dans les champs de métadonnées PDF (simulation).', supportedFileTypes: ['application/pdf'] },
+  { id: 'dct_jpeg', name: 'DCT (JPEG) - Théorique', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (non implémenté).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
 ];
