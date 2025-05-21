@@ -92,8 +92,8 @@ export default function BatchProcessingPage() {
     const currentMajorTypes = new Set(detectedFileTypes);
     const updatedAlgorithmSelections = { ...algorithmSelections };
 
-    newBatchFiles.forEach(batchFile => {
-      const majorType = getMajorFileType(batchFile.file.type);
+    newFilesArray.forEach(file => {
+      const majorType = getMajorFileType(file.type);
       if (!currentMajorTypes.has(majorType)) {
         currentMajorTypes.add(majorType);
         if (!(majorType in updatedAlgorithmSelections)) {
@@ -120,7 +120,7 @@ export default function BatchProcessingPage() {
         }
         
         if (currentSelectedFiles.length === 0 && newBatchFiles.length > 0) {
-            return newBatchFiles; // Directly return new files if current list is empty
+            return newBatchFiles;
         }
         if (filesToAdd.length > 0) {
             return [...currentSelectedFiles, ...filesToAdd];
@@ -150,7 +150,7 @@ export default function BatchProcessingPage() {
   };
 
   const handleAlgorithmSelectionChange = (majorFileType: string, algorithmId: string) => {
-    setAlgorithmSelections(prev => ({ ...prev, [majorType]: algorithmId }));
+    setAlgorithmSelections(prev => ({ ...prev, [majorFileType]: algorithmId }));
     setSelectedFiles(prevFiles => prevFiles.map(bf => {
         if (getMajorFileType(bf.file.type) === majorFileType) {
             if (bf.status === 'incompatible' || bf.status === 'no_algorithm' || bf.status === 'capacity_error') {
@@ -305,7 +305,7 @@ export default function BatchProcessingPage() {
             const capacity = await getAudioCapacityInfo(batchFile.file, algorithmId);
             realCapacityBytes = capacity.capacityBytes;
           } else if (majorType === 'text') {
-            const textContent = await batchFile.file.text(); // Read text file content for capacity check
+            const textContent = await batchFile.file.text(); 
             const capacity = await getTextCapacityInfo(textContent, algorithmId);
             realCapacityBytes = capacity.capacityBytes;
           }
@@ -338,7 +338,6 @@ export default function BatchProcessingPage() {
         } else if (majorType === 'application/pdf') {
           await embedMessageInPdf(batchFile.file, messageToEmbed, algorithmId);
         }
-        // If embed function completes without error, it's a success for batch context
         setSelectedFiles(prev =>
           prev.map(f =>
             f.id === batchFile.id
@@ -568,5 +567,7 @@ export default function BatchProcessingPage() {
     </div>
   );
 }
+
+    
 
     
