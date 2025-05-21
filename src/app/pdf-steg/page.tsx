@@ -94,7 +94,7 @@ export default function PdfStegPage() {
           const capacityText = `Capacité estimée pour ${selectedAlgorithm?.name}: env. ${info.capacityBytes} octets.`;
           setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
         } catch (error: any) {
-          toast({ variant: "destructive", title: "Erreur de Capacité PDF (Simulée)", description: error.message });
+          toast({ variant: "destructive", title: "Erreur de Capacité PDF", description: error.message });
           setState(prev => ({ ...prev, capacityInfo: null, statusMessage: {type: 'error', text: error.message } }));
         }
       }
@@ -123,7 +123,7 @@ export default function PdfStegPage() {
         const capacityText = `Capacité estimée pour ${newSelectedAlgorithm?.name}: env. ${info.capacityBytes} octets.`;
         setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
       } catch (error: any) {
-        toast({ variant: "destructive", title: "Erreur de Capacité PDF (Simulée)", description: error.message });
+        toast({ variant: "destructive", title: "Erreur de Capacité PDF", description: error.message });
       }
     }
   };
@@ -145,56 +145,51 @@ export default function PdfStegPage() {
     }
     
     const messageBytes = new TextEncoder().encode(state.messageToEmbed).length;
-    // For simulated capacity, which is an estimate, we might just warn or proceed
     if (state.capacityInfo && state.capacityInfo.isEstimate && messageBytes > state.capacityInfo.capacityBytes) {
-      toast({ variant: "default", title: "Avertissement de Capacité (Simulée)", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithm.name}. L'intégration simulée pourrait échouer.` });
-      // For simulation, we can choose to proceed or block. Let's proceed with a warning.
+      toast({ variant: "default", title: "Avertissement de Capacité", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithm.name}. L'intégration pourrait échouer.` });
     }
 
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (simulée ${selectedAlgorithm.name}) en cours...`} }));
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
     try {
       const stegoObjectUrl = await embedMessageInPdf(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
       
       if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
-      setObjectUrlToRevoke(stegoObjectUrl); // This is the original file's URL in simulation
+      setObjectUrlToRevoke(stegoObjectUrl);
 
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
         stegoFileDataUri: stegoObjectUrl, 
-        statusMessage: {type: 'success', text:`Message intégré (simulé ${selectedAlgorithm.name}) avec succès.`} 
+        statusMessage: {type: 'success', text:`Message intégré avec succès (${selectedAlgorithm.name}).`} 
       }));
-      toast({ title: "Succès (Simulé)", description: `Message intégré via ${selectedAlgorithm.name}.` });
+      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}.` });
     } catch (error: any) {
-      console.error(`Erreur d'intégration PDF (simulée ${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'intégration (simulée ${selectedAlgorithm.name}): ${error.message}`} }));
-      toast({ variant: "destructive", title: `Erreur d'Intégration (Simulée ${selectedAlgorithm.name})`, description: error.message });
+      console.error(`Erreur d'intégration PDF (${selectedAlgorithm.name}):`, error);
+      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithm.name}): ${error.message}`} }));
+      toast({ variant: "destructive", title: `Erreur d'Intégration (${selectedAlgorithm.name})`, description: error.message });
     }
   };
   
   const handleExportStegoFile = async () => {
     if (!state.stegoFileDataUri || !state.fileName) {
-      toast({ variant: "destructive", title: "Erreur", description: "Aucun fichier PDF (simulé) stéganographié à exporter." });
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun fichier PDF stéganographié à exporter." });
       return;
     }
     setState(prev => ({ ...prev, isExporting: true }));
     
     try {
-        // Since it's simulated, stegoFileDataUri is an Object URL to the original file
-        // or a new one if actual modification happened. We can use convertObjectUrlToDataUri
-        // if we want to ensure download, but for simple Object URL download, 'a.href' is fine.
         const a = document.createElement('a');
-        a.href = state.stegoFileDataUri; // This is the Object URL
+        a.href = state.stegoFileDataUri; 
         const fileNameBase = state.fileName.substring(0, state.fileName.lastIndexOf('.')) || state.fileName;
         a.download = `steg_${fileNameBase}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         
-        toast({ title: "Exporté (Simulé)", description: `Fichier PDF ${state.fileName} avec message (simulé) intégré téléchargé.` });
+        toast({ title: "Exporté", description: `Fichier PDF ${state.fileName} avec message intégré téléchargé.` });
     } catch (error: any) {
-        console.error("Erreur d'exportation PDF (simulée):", error);
-        toast({ variant: "destructive", title: "Erreur d'Exportation (Simulée)", description: `Impossible d'exporter le fichier: ${error.message}` });
+        console.error("Erreur d'exportation PDF:", error);
+        toast({ variant: "destructive", title: "Erreur d'Exportation", description: `Impossible d'exporter le fichier: ${error.message}` });
     } finally {
         setState(prev => ({ ...prev, isExporting: false }));
     }
@@ -205,34 +200,34 @@ export default function PdfStegPage() {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier PDF et choisir un algorithme." });
       return;
     }
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (simulée ${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
       const extractedText = await extractMessageFromPdf(state.carrierFile, state.selectedAlgorithmId);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
         extractedMessage: extractedText, 
-        statusMessage: {type: 'success', text:`Message extrait (simulé ${selectedAlgorithm.name}) avec succès.`} 
+        statusMessage: {type: 'success', text:`Message extrait avec succès (${selectedAlgorithm.name}).`} 
       }));
-      toast({ title: "Extraction Réussie (Simulée)", description: `Message extrait via ${selectedAlgorithm.name}.` });
+      toast({ title: "Extraction Réussie", description: `Message extrait via ${selectedAlgorithm.name}.` });
     } catch (error: any) {
-      console.error(`Erreur d'extraction PDF (simulée ${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction (simulée ${selectedAlgorithm.name}): ${error.message}`}, extractedMessage: '' }));
-      toast({ variant: "destructive", title: `Erreur d'Extraction (Simulée ${selectedAlgorithm.name})`, description: error.message });
+      console.error(`Erreur d'extraction PDF (${selectedAlgorithm.name}):`, error);
+      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction (${selectedAlgorithm.name}): ${error.message}`}, extractedMessage: '' }));
+      toast({ variant: "destructive", title: `Erreur d'Extraction (${selectedAlgorithm.name})`, description: error.message });
     }
   };
   
   const handleCopyExtractedMessage = async () => {
     if (!state.extractedMessage) {
-      toast({ variant: "destructive", title: "Erreur", description: "Aucun message (simulé) extrait à copier." });
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun message extrait à copier." });
       return;
     }
     try {
       await navigator.clipboard.writeText(state.extractedMessage);
-      toast({ title: "Copié", description: "Message (simulé) extrait copié dans le presse-papiers." });
+      toast({ title: "Copié", description: "Message extrait copié dans le presse-papiers." });
     } catch (err) {
-      console.error('Échec de la copie du texte (simulé): ', err);
-      toast({ variant: "destructive", title: "Erreur de Copie", description: "Impossible de copier le message (simulé)." });
+      console.error('Échec de la copie du texte: ', err);
+      toast({ variant: "destructive", title: "Erreur de Copie", description: "Impossible de copier le message." });
     }
   };
   
@@ -246,16 +241,16 @@ export default function PdfStegPage() {
   }, [objectUrlToRevoke]);
 
   const messageBytesForEmbed = state.messageToEmbed ? new TextEncoder().encode(state.messageToEmbed).length : 0;
-  const isCapacityExceeded = state.capacityInfo && state.capacityInfo.isEstimate && (messageBytesForEmbed > state.capacityInfo.capacityBytes); // For estimates, this might just be a warning
+  const isCapacityExceeded = state.capacityInfo && state.capacityInfo.isEstimate && (messageBytesForEmbed > state.capacityInfo.capacityBytes); 
     
-  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo /* && !isCapacityExceeded (allow trying for estimates) */;
+  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
 
   return (
     <div className="space-y-8">
-       <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6 text-center">Outil de Stéganographie PDF (Simulé)</h1>
+       <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6 text-center">Outil de Stéganographie PDF</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-8">
            <FileUploadCard
@@ -298,3 +293,5 @@ export default function PdfStegPage() {
     </div>
   );
 }
+
+    
