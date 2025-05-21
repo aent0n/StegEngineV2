@@ -20,6 +20,10 @@ import { getAudioCapacityInfo, embedMessageInAudio, extractMessageFromAudio, con
 import { getTextCapacityInfo, embedMessageInText, extractMessageFromText } from '@/lib/textSteganography';
 import { getPdfCapacityInfo, embedMessageInPdf, extractMessageFromPdf, convertObjectUrlToDataUri as convertPdfObjectUrlToDataUri } from '@/lib/pdfSteganography';
 
+interface ExtractedMessageDetail {
+  algorithmName: string;
+  message: string;
+}
 
 interface BatchFile {
   file: File;
@@ -29,8 +33,7 @@ interface BatchFile {
   capacityInfo?: { realCapacityBytes?: number; messageFits?: boolean };
   stegoFileDataUri?: string; 
   stegoTextContent?: string; 
-  extractedMessage?: string;
-  extractingAlgorithm?: string;
+  extractedMessages: ExtractedMessageDetail[] | null; // Changed to array for multiple messages
 }
 
 type OperationMode = 'embed' | 'extract';
@@ -45,7 +48,7 @@ const getFileIcon = (fileType: string) => {
 
 const getMajorFileType = (mimeType: string): string => {
   if (!mimeType) return 'unknown';
-  if (mimeType === 'application/pdf') return 'application/pdf'; // Treat PDF as its own major type for algo filtering
+  if (mimeType === 'application/pdf') return 'application/pdf'; 
   return mimeType.split('/')[0];
 };
 
@@ -113,15 +116,13 @@ export default function BatchProcessingPage() {
 
   const handleOperationModeChange = (mode: OperationMode) => {
     setOperationMode(mode);
-    // Reset status of files when mode changes, as previous results are for a different operation
     setSelectedFiles(prev => prev.map(f => ({
         ...f,
         status: 'pending',
         resultMessage: undefined,
         stegoFileDataUri: undefined,
         stegoTextContent: undefined,
-        extractedMessage: undefined,
-        extractingAlgorithm: undefined,
+        extractedMessages: null,
         capacityInfo: undefined,
     })));
   };
@@ -137,6 +138,7 @@ export default function BatchProcessingPage() {
       file,
       id: `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).substring(2, 15)}`,
       status: 'pending',
+      extractedMessages: null,
     }));
 
     const currentMajorTypes = new Set(detectedFileTypes);
@@ -178,9 +180,6 @@ export default function BatchProcessingPage() {
   };
 
   const removeFile = (idToRemove: string) => {
-    const fileToRemove = selectedFiles.find(f => f.id === idToRemove);
-    // No object URLs to revoke for batch file Data URIs or text content.
-    
     const remainingFiles = selectedFiles.filter(f => f.id !== idToRemove);
     setSelectedFiles(remainingFiles);
 
@@ -204,7 +203,7 @@ export default function BatchProcessingPage() {
     setSelectedFiles(prevFiles => prevFiles.map(bf => {
         if (getMajorFileType(bf.file.type) === majorFileType) {
             if (bf.status === 'incompatible' || bf.status === 'no_algorithm' || bf.status === 'capacity_error') {
-                 return { ...bf, status: 'pending', resultMessage: undefined, capacityInfo: undefined, stegoFileDataUri: undefined, stegoTextContent: undefined };
+                 return { ...bf, status: 'pending', resultMessage: undefined, capacityInfo: undefined, stegoFileDataUri: undefined, stegoTextContent: undefined, extractedMessages: null };
             }
         }
         return bf;
@@ -316,17 +315,16 @@ const handleCopyExtracted = async (textToCopy?: string) => {
     setIsProcessing(true); 
 
     const filesToProcessMapped = selectedFiles.map(bf => {
-        // Reset previous results for files being re-processed or processed in a new mode
         let newStatus = bf.status;
-        if (bf.status !== 'pending' && bf.status !== 'incompatible') { // Keep incompatible status
+        if (bf.status !== 'pending' && bf.status !== 'incompatible') {
              newStatus = 'pending';
         }
         
-        if (operationMode === 'embed') {
-            const majorType = getMajorFileType(bf.file.type);
-            const algoId = algorithmSelections[majorType];
-            let updatedBf = { ...bf, status: newStatus, resultMessage: undefined, stegoFileDataUri: undefined, stegoTextContent: undefined, extractedMessage: undefined, extractingAlgorithm: undefined };
+        let updatedBf: BatchFile = { ...bf, status: newStatus, resultMessage: undefined, stegoFileDataUri: undefined, stegoTextContent: undefined, extractedMessages: null };
             
+        if (operationMode === 'embed') {
+            const majorType = getMajorFileType(updatedBf.file.type);
+            const algoId = algorithmSelections[majorType];
             if (!algoId || algoId === 'none') {
                 if (getCompatibleAlgorithms(majorType).length === 0) {
                     updatedBf.status = 'incompatible';
@@ -337,21 +335,22 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                 }
             } else {
                 const algoDetails = mockAlgorithms.find(a => a.id === algoId);
-                if (algoDetails && algoDetails.supportedFileTypes.includes(bf.file.type)) {
+                if (algoDetails && algoDetails.supportedFileTypes.includes(updatedBf.file.type)) {
                     updatedBf.status = 'processing';
                     updatedBf.resultMessage = 'En attente de traitement...';
-                } else if (algoDetails && !algoDetails.supportedFileTypes.includes(bf.file.type)) {
+                } else if (algoDetails && !algoDetails.supportedFileTypes.includes(updatedBf.file.type)) {
                     updatedBf.status = 'incompatible';
-                    updatedBf.resultMessage = `Type (${bf.file.type}) incompatible avec ${algoDetails.name}.`;
+                    updatedBf.resultMessage = `Type (${updatedBf.file.type}) incompatible avec ${algoDetails.name}.`;
                 } else if (!algoDetails) { 
                     updatedBf.status = 'error';
                     updatedBf.resultMessage = 'Erreur: Détails de l\'algorithme non trouvés.';
                 }
             }
-            return updatedBf;
         } else { // Extract mode
-            return { ...bf, status: 'processing', resultMessage: 'En attente d\'extraction...', stegoFileDataUri: undefined, stegoTextContent: undefined, extractedMessage: undefined, extractingAlgorithm: undefined };
+             updatedBf.status = 'processing';
+             updatedBf.resultMessage = 'En attente d\'extraction...';
         }
+        return updatedBf;
     });
 
     setSelectedFiles(filesToProcessMapped);
@@ -390,23 +389,23 @@ const handleCopyExtracted = async (textToCopy?: string) => {
         let capacityCheckError: string | null = null;
 
         try {
-            if (algorithmDetails.isMetadataBased || algorithmDetails.id === 'pdf_metadata_simulated') {
-            if (algorithmDetails.estimatedCapacity) {
-                realCapacityBytes = algorithmDetails.estimatedCapacity;
-            } else {
-                capacityCheckError = `Capacité estimée non disponible pour ${algorithmDetails.name}.`;
-            }
+            if (algorithmDetails.isMetadataBased || algorithmDetails.id === 'pdf_metadata_simulated' || algorithmDetails.estimatedCapacity) {
+                if (algorithmDetails.estimatedCapacity) {
+                    realCapacityBytes = algorithmDetails.estimatedCapacity;
+                } else {
+                    capacityCheckError = `Capacité estimée non disponible pour ${algorithmDetails.name}.`;
+                }
             } else if (majorType === 'image') {
-            const capacity = await getImageCapacityInfo(batchFile.file, algorithmId);
-            realCapacityBytes = capacity.capacityBytes;
+                const capacity = await getImageCapacityInfo(batchFile.file, algorithmId);
+                realCapacityBytes = capacity.capacityBytes;
             } else if (majorType === 'audio') {
-            const capacity = await getAudioCapacityInfo(batchFile.file, algorithmId);
-            realCapacityBytes = capacity.capacityBytes;
+                const capacity = await getAudioCapacityInfo(batchFile.file, algorithmId);
+                realCapacityBytes = capacity.capacityBytes;
             } else if (majorType === 'text') {
-            const textContent = await batchFile.file.text();
-            const capacity = await getTextCapacityInfo(textContent, algorithmId);
-            realCapacityBytes = capacity.capacityBytes;
-            } else if (majorType === 'application/pdf' && algorithmId === 'pdf_metadata_simulated') { // PDF also uses estimated for embed
+                const textContent = await batchFile.file.text();
+                const capacity = await getTextCapacityInfo(textContent, algorithmId);
+                realCapacityBytes = capacity.capacityBytes;
+            } else if (majorType === 'application/pdf' && algorithmId === 'pdf_metadata_simulated') {
                  const capacity = await getPdfCapacityInfo(batchFile.file, algorithmId);
                  realCapacityBytes = capacity.capacityBytes;
             } else {
@@ -436,22 +435,22 @@ const handleCopyExtracted = async (textToCopy?: string) => {
             let objectUrlToRevoke: string | null = null;
 
             if (majorType === 'image') {
-            const result = await embedMessageInImage(batchFile.file, messageToEmbed, algorithmId);
-            if (result.startsWith('data:')) { 
-                processedFileData = result;
-            } else { 
-                objectUrlToRevoke = result;
-                processedFileData = await convertImageObjectUrlToDataUri(result);
-            }
+                const result = await embedMessageInImage(batchFile.file, messageToEmbed, algorithmId);
+                if (result.startsWith('data:')) { 
+                    processedFileData = result;
+                } else { 
+                    objectUrlToRevoke = result;
+                    processedFileData = await convertImageObjectUrlToDataUri(result);
+                }
             } else if (majorType === 'audio') {
-            objectUrlToRevoke = await embedMessageInAudio(batchFile.file, messageToEmbed, algorithmId);
-            processedFileData = await convertAudioObjectUrlToDataUri(objectUrlToRevoke);
+                objectUrlToRevoke = await embedMessageInAudio(batchFile.file, messageToEmbed, algorithmId);
+                processedFileData = await convertAudioObjectUrlToDataUri(objectUrlToRevoke);
             } else if (majorType === 'text') {
-            const textContent = await batchFile.file.text(); 
-            processedTextContent = await embedMessageInText(textContent, messageToEmbed, algorithmId);
+                const textContent = await batchFile.file.text(); 
+                processedTextContent = await embedMessageInText(textContent, messageToEmbed, algorithmId);
             } else if (majorType === 'application/pdf') {
-            objectUrlToRevoke = await embedMessageInPdf(batchFile.file, messageToEmbed, algorithmId);
-            processedFileData = await convertPdfObjectUrlToDataUri(objectUrlToRevoke);
+                objectUrlToRevoke = await embedMessageInPdf(batchFile.file, messageToEmbed, algorithmId);
+                processedFileData = await convertPdfObjectUrlToDataUri(objectUrlToRevoke);
             }
             
             if (objectUrlToRevoke) {
@@ -472,6 +471,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
             )
             );
         } catch (embedError: any) {
+            console.error(`[Batch Embed - ERROR] File: ${batchFile.file.name}, Algo: ${algorithmDetails.name}`, embedError);
             setSelectedFiles(prev =>
             prev.map(f =>
                 f.id === batchFile.id
@@ -485,8 +485,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
           const compatibleAlgorithms = getCompatibleAlgorithms(majorType);
           setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Analyse (${compatibleAlgorithms.length} algos)...` } : f));
           
-          let extractedText: string | null = null;
-          let algoUsed: SteganographyAlgorithm | null = null;
+          const foundMessagesForFile: ExtractedMessageDetail[] = [];
           let extractionError: string | null = null;
 
           if (compatibleAlgorithms.length === 0) {
@@ -503,36 +502,34 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                   } else if (majorType === 'audio') {
                       currentExtractedText = await extractMessageFromAudio(batchFile.file, algo.id);
                   } else if (majorType === 'text') {
-                      currentExtractedText = await extractMessageFromText(batchFile.file, algo.id);
+                      const textContent = await batchFile.file.text(); // Need to read text file content
+                      currentExtractedText = await extractMessageFromText(textContent, algo.id);
                   } else if (majorType === 'application/pdf') {
                       currentExtractedText = await extractMessageFromPdf(batchFile.file, algo.id);
                   }
 
                   if (currentExtractedText && currentExtractedText.trim().length > 0) {
-                      extractedText = currentExtractedText;
-                      algoUsed = algo;
-                      break; // First success wins
+                      foundMessagesForFile.push({ algorithmName: algo.name, message: currentExtractedText });
                   }
               } catch (e: any) {
-                  // Log error for this specific algorithm attempt, but continue to next algorithm
                   console.warn(`[Batch Extract Attempt Error] File: ${batchFile.file.name}, Algo: ${algo.name}, Error: ${e.message}`);
-                  extractionError = e.message; // Store last error
+                  extractionError = e.message; 
               }
           }
 
-          if (extractedText && algoUsed) {
+          if (foundMessagesForFile.length > 0) {
               setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? {
                   ...f,
                   status: 'success',
-                  resultMessage: `Message extrait via ${algoUsed!.name}.`,
-                  extractedMessage: extractedText!,
-                  extractingAlgorithm: algoUsed!.name,
+                  resultMessage: `${foundMessagesForFile.length} message(s) extrait(s).`,
+                  extractedMessages: foundMessagesForFile,
               } : f));
           } else {
               setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? {
                   ...f,
                   status: 'not_found',
                   resultMessage: `Aucun message trouvé après ${compatibleAlgorithms.length} tentatives. ${extractionError ? `Dernière erreur: ${extractionError.substring(0,50)}` : ''}`.trim(),
+                  extractedMessages: null,
               } : f));
           }
       }
@@ -667,14 +664,14 @@ const handleCopyExtracted = async (textToCopy?: string) => {
             {selectedFiles.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">Aucun fichier sélectionné pour le moment.</p>
             ) : (
-              <ScrollArea className="h-[400px] pr-4">
+              <ScrollArea className="h-[400px] pr-4"> {/* Added pr-4 for scrollbar padding */}
                 <ul className="space-y-3">
                   {selectedFiles.map((batchFile) => {
                     const majorType = getMajorFileType(batchFile.file.type);
                     const algorithmDetails = operationMode === 'embed' && algorithmSelections[majorType] 
                                             ? mockAlgorithms.find(a => a.id === algorithmSelections[majorType]) 
                                             : null;
-                    const estimatedCapacity = algorithmDetails?.isMetadataBased || algorithmDetails?.id === 'pdf_metadata_simulated' ? algorithmDetails.estimatedCapacity : null;
+                    const estimatedCapacity = algorithmDetails?.estimatedCapacity;
                     const percentageUsed = estimatedCapacity && messageToEmbedBytes > 0 && estimatedCapacity > 0
                                           ? Math.min(100, (messageToEmbedBytes / estimatedCapacity) * 100)
                                           : 0;
@@ -703,12 +700,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                                     <span className="sr-only">Télécharger</span>
                                 </Button>
                             )}
-                            {operationMode === 'extract' && batchFile.status === 'success' && batchFile.extractedMessage && (
-                                <Button variant="outline" size="icon" onClick={() => handleCopyExtracted(batchFile.extractedMessage)} className="h-7 w-7">
-                                    <Copy className="h-4 w-4 text-primary" />
-                                    <span className="sr-only">Copier</span>
-                                </Button>
-                            )}
+                            {/* Copy button for extracted messages will be handled below if extractedMessages array exists */}
                             <Button variant="ghost" size="icon" onClick={() => removeFile(batchFile.id)} disabled={isProcessing} className="h-7 w-7">
                               <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                               <span className="sr-only">Retirer</span>
@@ -717,7 +709,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                         </div>
                         {operationMode === 'embed' && algorithmDetails && (batchFile.status === 'pending' || (batchFile.status === 'processing' && batchFile.resultMessage?.includes('Vérification de capacité'))) && (
                           <div className="text-xs text-muted-foreground mt-1 border-t pt-1">
-                            {algorithmDetails.isMetadataBased || algorithmDetails.id === 'pdf_metadata_simulated' ? (
+                            {algorithmDetails.isMetadataBased || algorithmDetails.estimatedCapacity ? (
                               <>
                                 {estimatedCapacity != null && (
                                   <>
@@ -746,12 +738,25 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                               {batchFile.resultMessage}
                           </p>
                         )}
-                        {operationMode === 'extract' && batchFile.status === 'success' && batchFile.extractedMessage && (
-                            <div className="mt-1 pt-1 border-t">
-                                <p className="text-xs font-semibold text-primary">Message Extrait (via {batchFile.extractingAlgorithm || 'N/A'}):</p>
-                                <p className="text-xs text-foreground bg-muted/30 p-1.5 rounded-sm max-h-20 overflow-y-auto whitespace-pre-wrap break-all">{batchFile.extractedMessage}</p>
+                        {operationMode === 'extract' && batchFile.status === 'success' && batchFile.extractedMessages && batchFile.extractedMessages.length > 0 && (
+                            <div className="mt-1 pt-1 border-t space-y-2">
+                                {batchFile.extractedMessages.map((extracted, index) => (
+                                    <div key={index} className="bg-muted/30 p-1.5 rounded-sm">
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-xs font-semibold text-primary">Message Extrait (via {extracted.algorithmName}):</p>
+                                            <Button variant="outline" size="icon" onClick={() => handleCopyExtracted(extracted.message)} className="h-6 w-6">
+                                                <Copy className="h-3 w-3 text-primary" />
+                                                <span className="sr-only">Copier</span>
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-foreground mt-0.5 max-h-20 overflow-y-auto whitespace-pre-wrap break-all">{extracted.message}</p>
+                                    </div>
+                                ))}
                             </div>
                         )}
+                         {operationMode === 'extract' && batchFile.status === 'not_found' && (
+                             <p className="text-xs text-muted-foreground mt-1 border-t pt-1">Aucun message détectable avec les algorithmes compatibles.</p>
+                         )}
                       </li>
                     );
                   })}
@@ -764,6 +769,3 @@ const handleCopyExtracted = async (textToCopy?: string) => {
     </div>
   );
 }
-
-
-    
