@@ -1,4 +1,4 @@
-![alt text](https://i.ibb.co/6739X3nZ/steglogo.png)
+![Logo Steg'Engine](stegengineSVG.svg)
 
 ---
 
