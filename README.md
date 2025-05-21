@@ -1,3 +1,7 @@
+![](https://i.ibb.co/6739X3nZ/steglogo.png)
+
+---
+
 # Steg'Engine
 
 Steg'Engine est une application web moderne de stéganographie, permettant de dissimuler et d'extraire des informations secrètes dans divers types de fichiers. L'application met l'accent sur le traitement côté client pour garantir la confidentialité des données et utilise une interface utilisateur intuitive pour une expérience utilisateur optimale. Un conseiller basé sur l'IA est également disponible pour aider à choisir le meilleur algorithme.
