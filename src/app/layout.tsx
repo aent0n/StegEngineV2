@@ -31,17 +31,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [theme, setTheme] = useState<string>('light'); // Default to light
+  const [theme, setTheme] = useState<string>('light'); // Default to light initially
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('stegengine-theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (storedTheme) {
       setTheme(storedTheme);
-    } else if (systemPrefersDark) {
-      setTheme('dark');
     } else {
-      setTheme('light');
+      // No theme in localStorage, determine by time
+      const currentHour = new Date().getHours();
+      const nightStartHour = 19; // 7 PM
+      const morningStartHour = 7;  // 7 AM
+
+      if (currentHour >= nightStartHour || currentHour < morningStartHour) {
+        setTheme('dark');
+      } else {
+        setTheme('light');
+      }
     }
   }, []);
 
