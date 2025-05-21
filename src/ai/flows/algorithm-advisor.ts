@@ -26,7 +26,7 @@ const AlgorithmAdvisorOutputSchema = z.object({
   algorithm: z.string().describe("L'algorithme de stéganographie suggéré, choisi parmi la liste fournie."),
   rationale: z
     .string()
-    .describe('La justification pour le choix de l\'algorithme suggéré.'),
+    .describe("La justification pour le choix de l'algorithme suggéré."),
 });
 export type AlgorithmAdvisorOutput = z.infer<typeof AlgorithmAdvisorOutputSchema>;
 
@@ -52,9 +52,9 @@ Message : {{{message}}}
 
 Suggérez le meilleur algorithme de la liste fournie et expliquez pourquoi c'est le choix le plus approprié.
 Assurez-vous que l'algorithme que vous suggérez peut gérer le type de fichier spécifique et qu'il est présent dans la liste ci-dessus.
-La justification doit être concise et aller à l'essentiel (1-2 phrases maximum), en considérant l'impact sur la taille du fichier, la sécurité et la facilité d'extraction.
+La justification doit être concise et aller à l'essentiel (1-2 phrases maximum), spécifiquement adaptée au type de fichier et au message fournis, en considérant l'impact sur la taille du fichier, la sécurité et la facilité d'extraction.
 Évitez de suggérer des algorithmes qui ne sont pas pratiques, qui ont des vulnérabilités connues, ou qui ne sont pas dans la liste fournie.
-Ne suggérez pas d'algorithmes pour des types de fichiers non listés (ex: vidéo).
+Ne suggérez pas d'algorithmes pour des types de fichiers non listés.
 Répondez entièrement en français.
 `,
 });
@@ -70,3 +70,4 @@ const algorithmAdvisorFlow = ai.defineFlow(
     return output!;
   }
 );
+
