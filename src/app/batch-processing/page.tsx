@@ -23,15 +23,15 @@ interface BatchFile {
 const getFileIcon = (fileType: string) => {
   if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-primary" />;
   if (fileType.startsWith('audio/')) return <MusicIcon className="h-5 w-5 text-primary" />;
-  if (fileType === 'application/pdf') return <FileQuestionIcon className="h-5 w-5 text-primary" />; // Specific for PDF
+  if (fileType === 'application/pdf') return <FileQuestionIcon className="h-5 w-5 text-primary" />;
   if (fileType.startsWith('text/')) return <FileText className="h-5 w-5 text-primary" />;
-  return <FileText className="h-5 w-5 text-muted-foreground" />; // Default
+  return <FileText className="h-5 w-5 text-muted-foreground" />;
 };
 
 const getMajorFileType = (mimeType: string): string => {
   if (!mimeType) return 'unknown';
-  if (mimeType === 'application/pdf') return 'application/pdf'; // Treat PDF specifically
-  return mimeType.split('/')[0]; // 'image', 'audio', 'text', 'application'
+  if (mimeType === 'application/pdf') return 'application/pdf';
+  return mimeType.split('/')[0];
 };
 
 const getFileTypeLabel = (majorType: string): string => {
@@ -84,13 +84,15 @@ export default function BatchProcessingPage() {
         const majorType = getMajorFileType(file.type);
         if (!currentMajorTypes.has(majorType)) {
           currentMajorTypes.add(majorType);
+          // Initialize algorithm selection for new type only if it's not already set
           if (!(majorType in updatedAlgorithmSelections)) {
-            updatedAlgorithmSelections[majorType] = null; // Initialize if new type
+            const compatibleAlgosForNewType = getCompatibleAlgorithms(majorType);
+            updatedAlgorithmSelections[majorType] = compatibleAlgosForNewType.length > 0 ? null : 'none'; // 'none' if no compatible algos
           }
         }
       });
       
-      setDetectedFileTypes(Array.from(currentMajorTypes));
+      setDetectedFileTypes(Array.from(currentMajorTypes).sort());
       setAlgorithmSelections(updatedAlgorithmSelections);
 
       setSelectedFiles(prevFiles => {
@@ -114,25 +116,28 @@ export default function BatchProcessingPage() {
     setSelectedFiles(remainingFiles);
 
     // Update detectedFileTypes and algorithmSelections if necessary
-    const majorTypeOfRemovedFile = getMajorFileType(removedFile.file.type);
-    const isTypeStillPresent = remainingFiles.some(f => getMajorFileType(f.file.type) === majorTypeOfRemovedFile);
+    const remainingMajorTypes = new Set<string>();
+    remainingFiles.forEach(f => remainingMajorTypes.add(getMajorFileType(f.file.type)));
+    
+    setDetectedFileTypes(Array.from(remainingMajorTypes).sort());
 
-    if (!isTypeStillPresent) {
-      setDetectedFileTypes(prevTypes => prevTypes.filter(t => t !== majorTypeOfRemovedFile));
-      setAlgorithmSelections(prevSelections => {
-        const newSelections = { ...prevSelections };
-        delete newSelections[majorTypeOfRemovedFile];
-        return newSelections;
-      });
-    }
+    // Clean up algorithmSelections for types no longer present
+    const newAlgorithmSelections = { ...algorithmSelections };
+    Object.keys(newAlgorithmSelections).forEach(typeKey => {
+        if (!remainingMajorTypes.has(typeKey)) {
+            delete newAlgorithmSelections[typeKey];
+        }
+    });
+    setAlgorithmSelections(newAlgorithmSelections);
   };
   
   const handleAlgorithmSelectionChange = (majorFileType: string, algorithmId: string) => {
     setAlgorithmSelections(prev => ({ ...prev, [majorFileType]: algorithmId }));
-    // Reset status of files of this type, as compatibility might change or be resolved
     setSelectedFiles(prevFiles => prevFiles.map(bf => {
         if (getMajorFileType(bf.file.type) === majorFileType) {
-            return { ...bf, status: 'pending', resultMessage: undefined };
+            if (bf.status === 'incompatible' || bf.status === 'no_algorithm') {
+                 return { ...bf, status: 'pending', resultMessage: undefined };
+            }
         }
         return bf;
     }));
@@ -153,24 +158,29 @@ export default function BatchProcessingPage() {
         return;
     }
     
-    // Check if an algorithm is selected for each file type present in selectedFiles
     const filesWithIssues: string[] = [];
+    let allAlgorithmsValidlySelected = true;
+
     selectedFiles.forEach(batchFile => {
         const majorType = getMajorFileType(batchFile.file.type);
-        if (!algorithmSelections[majorType]) {
-            filesWithIssues.push(batchFile.file.name);
+        if (!algorithmSelections[majorType] || algorithmSelections[majorType] === 'none') {
+             const compatibleAlgos = getCompatibleAlgorithms(majorType);
+            if (compatibleAlgos.length > 0) { // Only an issue if there were algos to choose from
+                 filesWithIssues.push(batchFile.file.name);
+                 allAlgorithmsValidlySelected = false;
+            }
         }
     });
 
-    if (filesWithIssues.length > 0) {
+    if (!allAlgorithmsValidlySelected) {
         toast({ 
             variant: "destructive", 
             title: "Algorithme manquant", 
-            description: `Veuillez sélectionner un algorithme pour tous les types de fichiers présents. Manquant pour: ${filesWithIssues.slice(0,3).join(', ')}${filesWithIssues.length > 3 ? '...' : ''}`
+            description: `Veuillez sélectionner un algorithme pour tous les types de fichiers pour lesquels des options sont disponibles. Problème pour: ${filesWithIssues.slice(0,3).join(', ')}${filesWithIssues.length > 3 ? '...' : ''}`
         });
         setSelectedFiles(prevFiles => prevFiles.map(bf => {
             const majorType = getMajorFileType(bf.file.type);
-            if (!algorithmSelections[majorType] && bf.status === 'pending') {
+            if ((!algorithmSelections[majorType] || algorithmSelections[majorType] === 'none') && getCompatibleAlgorithms(majorType).length > 0) {
                 return {...bf, status: 'no_algorithm', resultMessage: "Aucun algorithme sélectionné pour ce type."};
             }
             return bf;
@@ -184,9 +194,14 @@ export default function BatchProcessingPage() {
     const updatedFilesStatus = selectedFiles.map(batchFile => {
       const majorType = getMajorFileType(batchFile.file.type);
       const algorithmId = algorithmSelections[majorType];
+
+      if (!algorithmId || algorithmId === 'none') { // No algorithm available or selected for this type
+        return { ...batchFile, status: 'incompatible' as 'incompatible', resultMessage: "Aucun algorithme compatible pour ce type." };
+      }
+
       const algorithmDetails = mockAlgorithms.find(algo => algo.id === algorithmId);
 
-      if (!algorithmDetails) { // Should not happen if previous check passes
+      if (!algorithmDetails) { 
         return { ...batchFile, status: 'error' as 'error', resultMessage: "Erreur interne: Algorithme non trouvé." };
       }
       
@@ -203,7 +218,12 @@ export default function BatchProcessingPage() {
     });
     setSelectedFiles(updatedFilesStatus);
 
-    toast({ title: "Traitement par lots démarré", description: `Traitement de ${filesToProcessCount} fichiers compatibles...` });
+    if (filesToProcessCount > 0) {
+        toast({ title: "Traitement par lots démarré", description: `Traitement de ${filesToProcessCount} fichiers compatibles...` });
+    } else {
+        toast({ title: "Traitement par lots", description: "Aucun fichier compatible à traiter après vérification." });
+    }
+
 
     for (let i = 0; i < updatedFilesStatus.length; i++) {
       const currentFile = updatedFilesStatus[i];
@@ -211,9 +231,9 @@ export default function BatchProcessingPage() {
 
       const majorType = getMajorFileType(currentFile.file.type);
       const algorithmId = algorithmSelections[majorType];
-      const algorithmDetails = mockAlgorithms.find(algo => algo.id === algorithmId)!; // Should exist
+      const algorithmDetails = mockAlgorithms.find(algo => algo.id === algorithmId)!;
 
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000)); // Simulate processing
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000)); 
       
       const isSuccess = Math.random() > 0.2; 
 
@@ -233,21 +253,27 @@ export default function BatchProcessingPage() {
     }
 
     setIsProcessing(false);
-    // Re-filter to get final counts after all processing
-    const finalFiles = selectedFiles;
+    const finalFiles = selectedFiles; // Read state again after async operations
     const finalSuccessCount = finalFiles.filter(f => f.status === 'success').length;
     const finalErrorCount = finalFiles.filter(f => f.status === 'error').length;
     const finalIncompatibleCount = finalFiles.filter(f => f.status === 'incompatible').length;
     const finalNoAlgoCount = finalFiles.filter(f => f.status === 'no_algorithm').length;
 
-
-    toast({ 
-      title: "Traitement par lots terminé", 
-      description: `${finalSuccessCount} succès, ${finalErrorCount} échecs, ${finalIncompatibleCount} incompatibles, ${finalNoAlgoCount} sans algorithme. Vérifiez les résultats.` 
-    });
+    if (filesToProcessCount > 0 || finalFiles.some(f => f.status !== 'pending')) {
+         toast({ 
+            title: "Traitement par lots terminé", 
+            description: `${finalSuccessCount} succès, ${finalErrorCount} échecs, ${finalIncompatibleCount} incompatibles, ${finalNoAlgoCount} sans algo. sélectionné.` 
+        });
+    }
   };
   
-  const allAlgorithmsSelected = detectedFileTypes.length > 0 && detectedFileTypes.every(type => !!algorithmSelections[type]);
+  const allRequiredAlgorithmsSelected = detectedFileTypes.length === 0 || detectedFileTypes.every(type => {
+    const compatibleAlgos = getCompatibleAlgorithms(type);
+    // If there are no compatible algos, this type doesn't need a selection.
+    // Otherwise, an algorithm must be selected (not null and not 'none').
+    return compatibleAlgos.length === 0 || (!!algorithmSelections[type] && algorithmSelections[type] !== 'none');
+  });
+
 
   return (
     <div className="space-y-8">
@@ -267,7 +293,7 @@ export default function BatchProcessingPage() {
                 type="file"
                 multiple
                 onChange={handleFileChange}
-                accept={initialAcceptedFileTypes} // Accept all initially
+                accept={initialAcceptedFileTypes}
                 className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-3 cursor-pointer"
                 disabled={isProcessing}
               />
@@ -281,8 +307,8 @@ export default function BatchProcessingPage() {
                   const compatibleAlgorithms = getCompatibleAlgorithms(majorType);
                   if (compatibleAlgorithms.length === 0) {
                     return (
-                        <div key={majorType} className="p-2 bg-destructive/10 rounded-md">
-                            <p className="text-sm text-destructive">Aucun algorithme compatible trouvé pour les fichiers de type "{getFileTypeLabel(majorType)}". Ces fichiers ne pourront pas être traités.</p>
+                        <div key={majorType} className="p-3 bg-muted/30 rounded-md">
+                            <p className="text-sm text-muted-foreground">Aucun algorithme compatible trouvé pour les {getFileTypeLabel(majorType)}. Ces fichiers ne seront pas traités.</p>
                         </div>
                     );
                   }
@@ -330,7 +356,7 @@ export default function BatchProcessingPage() {
 
             <Button 
                 onClick={handleStartBatch} 
-                disabled={isProcessing || selectedFiles.length === 0 || !allAlgorithmsSelected || !messageToEmbed} 
+                disabled={isProcessing || selectedFiles.length === 0 || !allRequiredAlgorithmsSelected || !messageToEmbed} 
                 className="w-full" 
                 size="lg"
             >
@@ -366,7 +392,7 @@ export default function BatchProcessingPage() {
                                 batchFile.status === 'success' ? 'text-green-600' : 
                                 batchFile.status === 'error' ? 'text-red-600' : 
                                 batchFile.status === 'incompatible' ? 'text-orange-600' :
-                                batchFile.status === 'no_algorithm' ? 'text-yellow-600' : 'text-blue-600' // For processing and pending
+                                batchFile.status === 'no_algorithm' ? 'text-yellow-600' : 'text-blue-600'
                             }`} title={batchFile.resultMessage}>
                                 {batchFile.resultMessage}
                             </p>
@@ -396,3 +422,5 @@ export default function BatchProcessingPage() {
     </div>
   );
 }
+
+    
