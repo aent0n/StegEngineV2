@@ -82,7 +82,7 @@ export default function BatchProcessingPage() {
       const updatedAlgorithmSelections = { ...algorithmSelections };
 
       newFilesArray.forEach(file => {
-        const majorType = getMajorFileType(file.file.type);
+        const majorType = getMajorFileType(file.type); // Corrected: file.type instead of file.file.type
         if (!currentMajorTypes.has(majorType)) {
           currentMajorTypes.add(majorType);
           if (!(majorType in updatedAlgorithmSelections)) {
@@ -267,7 +267,7 @@ export default function BatchProcessingPage() {
     }
 
     setIsProcessing(false);
-    const finalFiles = selectedFiles;
+    const finalFiles = selectedFiles; // Re-read from state for latest values after async processing
     const finalSuccessCount = finalFiles.filter(f => f.status === 'success').length;
     const finalErrorCount = finalFiles.filter(f => f.status === 'error').length;
     const finalIncompatibleCount = finalFiles.filter(f => f.status === 'incompatible').length;
@@ -465,3 +465,5 @@ export default function BatchProcessingPage() {
     </div>
   );
 }
+
+    
