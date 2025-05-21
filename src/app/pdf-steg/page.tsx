@@ -80,7 +80,7 @@ export default function PdfStegPage() {
         carrierFile: file,
         fileName: file.name,
         filePreviewUrl: null, 
-        stegoFileDataUri: null,
+        stegoFileDataUri: null, // Clear stego file URI on new file upload
         statusMessage: null,
         extractedMessage: null, 
         capacityInfo: null, 
@@ -132,7 +132,9 @@ export default function PdfStegPage() {
       operationMode: mode, 
       statusMessage: null, 
       extractedMessage: null, 
-      stegoFileDataUri: null, 
+      // Do not clear stegoFileDataUri when just switching mode,
+      // so user can embed then immediately try to extract from the result.
+      // stegoFileDataUri: null, 
     }));
   };
 
@@ -157,7 +159,7 @@ export default function PdfStegPage() {
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        stegoFileDataUri: stegoObjectUrl, 
+        stegoFileDataUri: stegoObjectUrl, // Store the Object URL of the modified file
         statusMessage: {type: 'success', text:`Message intégré avec succès (${selectedAlgorithm.name}).`} 
       }));
       toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}.` });
@@ -195,18 +197,44 @@ export default function PdfStegPage() {
   };
 
   const handleExtract = async () => {
-    if (!state.carrierFile || !state.selectedAlgorithmId || !selectedAlgorithm) {
+    let fileForExtraction: File | null = null;
+
+    // Prioritize using the stegoFileDataUri if available (result of a previous embed)
+    if (state.stegoFileDataUri) {
+        try {
+            console.log("[PdfStegPage] Extraction: Utilisation de stegoFileDataUri:", state.stegoFileDataUri);
+            const response = await fetch(state.stegoFileDataUri);
+            if (!response.ok) {
+                 throw new Error(`Échec de la récupération du fichier stéganographié: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            const fileName = state.fileName || "stego_document.pdf"; // Use original name or a default
+            fileForExtraction = new File([blob], fileName, { type: "application/pdf" });
+            console.log("[PdfStegPage] Fichier pour extraction (depuis stegoFileDataUri):", fileForExtraction.name, fileForExtraction.size);
+        } catch (fetchError: any) {
+            console.error("Erreur de récupération du fichier stéganographié depuis Object URL:", fetchError);
+            toast({ variant: "destructive", title: "Erreur interne", description: `Impossible de charger le fichier modifié pour extraction: ${fetchError.message}` });
+            setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur interne: ${fetchError.message}`}}));
+            return;
+        }
+    } else if (state.carrierFile) {
+        console.log("[PdfStegPage] Extraction: Utilisation de carrierFile:", state.carrierFile.name);
+        fileForExtraction = state.carrierFile;
+    }
+
+    if (!fileForExtraction || !state.selectedAlgorithmId || !selectedAlgorithm) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier PDF et choisir un algorithme." });
       return;
     }
+
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
-      const extractedTextResult = await extractMessageFromPdf(state.carrierFile, state.selectedAlgorithmId);
+      const extractedTextResult = await extractMessageFromPdf(fileForExtraction, state.selectedAlgorithmId);
       console.log("[PdfStegPage] Texte extrait reçu de la fonction:", `"${extractedTextResult}"`);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        extractedMessage: extractedTextResult || "", // Ensure it's a string, even if empty
+        extractedMessage: extractedTextResult || "", 
         statusMessage: {type: 'success', text:`Message extrait avec succès (${selectedAlgorithm.name}).`} 
       }));
       toast({ title: "Extraction Réussie", description: `Message extrait via ${selectedAlgorithm.name}.` });
@@ -242,12 +270,11 @@ export default function PdfStegPage() {
   }, [objectUrlToRevoke]);
 
   const messageBytesForEmbed = state.messageToEmbed ? new TextEncoder().encode(state.messageToEmbed).length : 0;
-  // For PDF metadata, capacity exceeded is more of a warning since it's an estimate.
   const isCapacityExceeded = state.capacityInfo && state.capacityInfo.isEstimate && (messageBytesForEmbed > state.capacityInfo.capacityBytes); 
     
-  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ; // No direct !isCapacityExceeded check for estimated capacity
+  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
-  const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
+  const isExtractPossible = !!(state.carrierFile || state.stegoFileDataUri) && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
 
   return (
@@ -295,5 +322,4 @@ export default function PdfStegPage() {
     </div>
   );
 }
-
     
