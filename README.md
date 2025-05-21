@@ -1,4 +1,4 @@
-![img](https://i.ibb.co/6739X3nZ/steglogo.png)
+![alt text](https://i.ibb.co/6739X3nZ/steglogo.png)
 
 ---
 
