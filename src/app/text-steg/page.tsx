@@ -1,4 +1,5 @@
-
+// File overview: Page component for the Text Steganography tool.
+// Allows users to embed and extract messages in plain text using whitespace or zero-width character techniques.
 "use client";
 
 import type React from 'react';
@@ -72,7 +73,7 @@ const initialState: StegToolState = {
   stegoFileDataUri: null, 
 
   messageToEmbed: "",
-  extractedMessages: null, // Changed
+  extractedMessages: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -139,7 +140,7 @@ export default function TextStegPage() {
             coverText: newText, 
             stegoText: newText, 
             statusMessage: null, 
-            extractedMessages: null // Changed
+            extractedMessages: null
         }));
     }
   };
@@ -153,7 +154,7 @@ export default function TextStegPage() {
         ...prev, 
         selectedAlgorithmId: algorithmId, 
         statusMessage: null, 
-        extractedMessages: null, // Changed
+        extractedMessages: null,
         stegoText: null,
         capacityInfo: null 
     }));
@@ -166,7 +167,7 @@ export default function TextStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessages: null, // Changed
+      extractedMessages: null,
       stegoText: mode === 'extract' ? currentTextInPrimaryArea : null, 
       coverText: mode === 'embed' ? currentTextInPrimaryArea : prev.coverText, 
       capacityInfo: null 
@@ -239,7 +240,7 @@ export default function TextStegPage() {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez fournir un texte stéganographié." });
       return;
     }
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null }));
     
     const foundMessages: ExtractedMessageDetail[] = [];
     let extractionErrorOccurred = false;
@@ -285,7 +286,7 @@ export default function TextStegPage() {
     }
   };
   
-  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+  const handleCopyExtractedMessage = async (message: string) => {
     if (!message) {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
@@ -325,7 +326,7 @@ export default function TextStegPage() {
             ...prev, 
             coverText: newCoverText, 
             stegoText: state.operationMode === 'extract' ? newCoverText : null, 
-            extractedMessages: null, // Changed
+            extractedMessages: null,
             statusMessage: {type: 'success', text:"Texte porteur généré par l'IA."}
         }));
         toast({title: "Succès", description: "Texte porteur généré par l'IA."})
@@ -352,8 +353,6 @@ export default function TextStegPage() {
   
   const textAvailableForExtract = state.operationMode === 'extract' ? state.coverText : state.stegoText;
   const isExtractPossible = !!textAvailableForExtract; 
-  
-  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
   
   const textAvailableForCopyStego = state.stegoText || (state.operationMode === 'extract' && state.coverText);
   const isCopyStegoTextPossible = !!textAvailableForCopyStego && textAvailableForCopyStego.length > 0;
@@ -397,9 +396,8 @@ export default function TextStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage} 
-            extractedMessages={state.extractedMessages} // Changed
+            extractedMessages={state.extractedMessages}
             isTextTool={true} 
             onCopyStegoText={handleCopyStegoText} 
             isCopyStegoTextPossible={isCopyStegoTextPossible}

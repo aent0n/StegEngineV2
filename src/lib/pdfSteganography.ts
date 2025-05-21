@@ -1,8 +1,9 @@
-
+// File overview: Provides functions for PDF steganography,
+// currently using the PDF's Subject metadata field to store hidden messages.
 import type { CapacityInfo } from '@/types';
 
-const SIMULATED_PDF_CAPACITY_BYTES = 2048; // Example: 2KB simulated capacity
-const PDF_SUBJECT_PREFIX = "StegEngineHiddenMessage:"; // Prefix for our data in the Subject field
+const SIMULATED_PDF_CAPACITY_BYTES = 2048; 
+const PDF_SUBJECT_PREFIX = "StegEngineHiddenMessage:"; 
 
 // Helper to convert Uint8Array to Base64 string
 function uint8ArrayToBase64(bytes: Uint8Array): string {
@@ -32,8 +33,6 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 
 export async function getPdfCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
-  // For metadata steganography, capacity is generally flexible and not easily quantifiable like LSB.
-  // We return an estimated capacity.
   if (algorithmId === 'pdf_metadata_simulated') { 
     return { 
       capacityBytes: SIMULATED_PDF_CAPACITY_BYTES, 
@@ -52,7 +51,6 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
   console.log("[PDF Embed] Tentative d'intégration via le champ Subject.");
 
   try {
-    // Dynamically import pdf-lib
     const { PDFDocument } = await import('pdf-lib');
     if (!PDFDocument) {
         console.error("[PDF Lib] PDFDocument n'a pas pu être importé de pdf-lib lors de l'intégration.");
@@ -74,7 +72,6 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
         throw new Error("Impossible de définir le champ Subject : fonction non disponible.");
     }
     
-    // Save the PDF. crucial: updateMetadata: false to prevent pdf-lib from overwriting our changes.
     const modifiedPdfBytes = await pdfDoc.save({ updateMetadata: false });
     const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
     return URL.createObjectURL(blob);
@@ -106,7 +103,7 @@ export async function extractMessageFromPdf(file: File, algorithmId: string): Pr
     throw new Error(`Impossible de charger le document PDF : ${(loadError as Error).message}`);
   }
 
-  if (!pdfDoc) { // Should not happen if PDFDocument.load didn't throw
+  if (!pdfDoc) { 
     throw new Error("PDFDocument n'a pas pu être initialisé.");
   }
   
@@ -116,7 +113,6 @@ export async function extractMessageFromPdf(file: File, algorithmId: string): Pr
       subjectValue = pdfDoc.getSubject();
   } else {
       console.warn(`[PDF Lib] pdfDoc.getSubject n'est pas une fonction. Impossible de récupérer le champ Subject.`);
-      // If the method doesn't exist, we can't retrieve the message this way.
       console.log("[PDF Extract] Message non trouvé (getSubject non disponible). Retour d'une chaîne vide.");
       return "";
   }

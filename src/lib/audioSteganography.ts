@@ -1,13 +1,15 @@
+// File overview: Provides functions for audio steganography,
+// including LSB and metadata-based methods for WAV files.
 
 import type { CapacityInfo } from '@/types';
 
-const MESSAGE_LENGTH_BYTES_METADATA = 4; // 4 bytes to store the length of the metadata payload
-const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; // Arbitrary estimate for metadata capacity
+const MESSAGE_LENGTH_BYTES_METADATA = 4; 
+const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; 
 
-// --- LSB Specific Constants ---
-const MESSAGE_LENGTH_BITS_LSB = 32; // 32 bits for LSB message length
+// LSB Specific Constants
+const MESSAGE_LENGTH_BITS_LSB = 32; 
 
-// --- UTF-8 Helpers ---
+// UTF-8 Helpers
 function utf8Encode(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
@@ -47,12 +49,12 @@ function numberToBinary(num: number, bits: number): string {
   return '0'.repeat(Math.max(0, bits - binary.length)) + binary;
 }
 
-// --- WAV Chunk Helpers ---
+// WAV Chunk Helpers
 interface WavChunk {
   id: string;
   size: number;
-  offset: number; // Offset of chunk data in the ArrayBuffer
-  dataOffset: number; // Offset of actual data (after id and size fields)
+  offset: number; 
+  dataOffset: number; 
 }
 
 function findChunk(view: DataView, chunkIdToFind: string, startOffset: number = 0): WavChunk | null {
@@ -75,9 +77,9 @@ interface ListInfoChunk extends WavChunk {
 
 function findListChunk(view: DataView, listTypeToFind: string, startOffset: number = 0): ListInfoChunk | null {
   let offset = startOffset;
-  while (offset < view.byteLength - 12) { // Minimum size for LIST chunk ID, size, and type
+  while (offset < view.byteLength - 12) {
     const id = String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
-    const size = view.getUint32(offset + 4, true); // This size includes the list type
+    const size = view.getUint32(offset + 4, true); 
     const listType = String.fromCharCode(view.getUint8(offset + 8), view.getUint8(offset + 9), view.getUint8(offset + 10), view.getUint8(offset + 11));
 
     if (id === 'LIST' && listType === listTypeToFind) {
@@ -106,7 +108,7 @@ function findSubChunk(view: DataView, parentChunkDataOffset: number, parentChunk
 }
 
 
-// --- WAV Header Interface and Parser ---
+// WAV Header Interface and Parser
 interface WavHeader {
   riffId: string;
   fileSize: number;
@@ -121,13 +123,13 @@ interface WavHeader {
   bitsPerSample: number;
   dataId: string;
   dataSize: number;
-  dataOffset: number; // Offset where actual audio sample data begins
-  headerSize: number; // Total size of all chunks before data samples
+  dataOffset: number; 
+  headerSize: number; 
 }
 
 function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
   const view = new DataView(buffer);
-  if (view.byteLength < 44) { // Minimum size for a valid WAV header
+  if (view.byteLength < 44) {
       console.error("File too small to be a valid WAV file");
       return null;
   }
@@ -159,24 +161,24 @@ function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
   header.byteRate = view.getUint32(offset, true); offset += 4;
   header.blockAlign = view.getUint16(offset, true); offset += 2;
   header.bitsPerSample = view.getUint16(offset, true); offset += 2;
-  // Skip any extra fmt bytes
+  
   offset = fmtChunk.dataOffset + fmtChunk.size;
   if (fmtChunk.size % 2 !== 0) offset++;
 
 
-  const dataChunk = findChunk(view, 'data', 12); // Search for data chunk after WAVE ID
+  const dataChunk = findChunk(view, 'data', 12); 
   if (!dataChunk) {
     console.error("WAV 'data' chunk not found."); return null;
   }
   header.dataId = dataChunk.id;
   header.dataSize = dataChunk.size;
   header.dataOffset = dataChunk.dataOffset;
-  header.headerSize = dataChunk.offset; // Offset of the 'data' chunk id itself
+  header.headerSize = dataChunk.offset; 
 
   return header as WavHeader;
 }
 
-// --- Capacity Info ---
+// Capacity Info
 export async function getAudioCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
   const buffer = await file.arrayBuffer();
   const header = parseWavHeader(buffer);
@@ -192,19 +194,17 @@ export async function getAudioCapacityInfo(file: File, algorithmId: string): Pro
     const numSamples = header.dataSize / (header.bitsPerSample / 8);
     const totalBitsAvailable = numSamples;
     if (totalBitsAvailable < MESSAGE_LENGTH_BITS_LSB) {
-      return { capacityBytes: 0, width: 0, height: 0 };
+      return { capacityBytes: 0, width: 0, height: 0, isEstimate: false };
     }
     const bitsForPayload = totalBitsAvailable - MESSAGE_LENGTH_BITS_LSB;
-    return { capacityBytes: Math.floor(bitsForPayload / 8), width: 0, height: 0 };
+    return { capacityBytes: Math.floor(bitsForPayload / 8), width: 0, height: 0, isEstimate: false };
   } else if (algorithmId === 'wav_metadata_comment') {
-    // For metadata, capacity is an estimate. The actual limit might depend on the file
-    // or a practical limit for comment fields. We don't show a progress bar.
     return { capacityBytes: METADATA_CAPACITY_ESTIMATE_BYTES, width: 0, height: 0, isEstimate: true };
   }
   throw new Error("Algorithme audio non reconnu pour le calcul de capacité.");
 }
 
-// --- LSB Audio Steganography ---
+// LSB Audio Steganography
 export async function embedMessageInLSBAudio(file: File, message: string): Promise<string> {
   const buffer = await file.arrayBuffer();
   const header = parseWavHeader(buffer);
@@ -280,34 +280,28 @@ export async function extractMessageFromLSBAudio(file: File): Promise<string> {
 }
 
 
-// --- WAV Metadata (INFO Comment) Steganography ---
-
+// WAV Metadata (INFO Comment) Steganography
 function createIcmtChunk(message: string): Uint8Array {
   const messageBytes = utf8Encode(message);
   const payloadLength = messageBytes.length;
   
-  // Data for ICMT: 4 bytes for payload length, then payload
   const icmtData = new Uint8Array(MESSAGE_LENGTH_BYTES_METADATA + payloadLength);
   const view = new DataView(icmtData.buffer);
-  view.setUint32(0, payloadLength, true); // Store length of the actual message
+  view.setUint32(0, payloadLength, true); 
   icmtData.set(messageBytes, MESSAGE_LENGTH_BYTES_METADATA);
 
   const chunkDataSize = icmtData.length;
-  const paddedChunkDataSize = chunkDataSize + (chunkDataSize % 2); // Ensure even size
+  const paddedChunkDataSize = chunkDataSize + (chunkDataSize % 2);
 
   const icmtChunk = new Uint8Array(8 + paddedChunkDataSize);
   const icmtView = new DataView(icmtChunk.buffer);
 
-  // ID: ICMT
   icmtView.setUint8(0, 'I'.charCodeAt(0));
   icmtView.setUint8(1, 'C'.charCodeAt(0));
   icmtView.setUint8(2, 'M'.charCodeAt(0));
   icmtView.setUint8(3, 'T'.charCodeAt(0));
-  // Size
   icmtView.setUint32(4, chunkDataSize, true);
-  // Data
   icmtChunk.set(icmtData, 8);
-  // Padding byte if needed (already zero-initialized)
   return icmtChunk;
 }
 
@@ -325,15 +319,12 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
   const dataChunk = findChunk(originalView, 'data', 12);
   if (!dataChunk) throw new Error("Chunk 'data' introuvable dans le fichier WAV.");
   
-  const insertionPoint = dataChunk.offset; // Insert INFO LIST before 'data' chunk
+  const insertionPoint = dataChunk.offset;
 
   let existingInfoListChunk: ListInfoChunk | null = null;
   let existingInfoListEndOffset = 0;
-  let preInfoContentEnd = insertionPoint;
 
-
-  // Try to find an existing INFO LIST chunk before the data chunk
-  let scanOffset = 12; // After RIFF, FileSize, WAVE
+  let scanOffset = 12; 
   while(scanOffset < insertionPoint) {
       const currentChunkId = String.fromCharCode(originalView.getUint8(scanOffset), originalView.getUint8(scanOffset+1), originalView.getUint8(scanOffset+2), originalView.getUint8(scanOffset+3));
       const currentChunkSize = originalView.getUint32(scanOffset+4, true);
@@ -341,8 +332,7 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
           const listType = String.fromCharCode(originalView.getUint8(scanOffset+8), originalView.getUint8(scanOffset+9), originalView.getUint8(scanOffset+10), originalView.getUint8(scanOffset+11));
           if (listType === 'INFO') {
               existingInfoListChunk = {id: 'LIST', size: currentChunkSize, listType: 'INFO', offset: scanOffset, dataOffset: scanOffset + 12};
-              existingInfoListEndOffset = scanOffset + 8 + currentChunkSize + (currentChunkSize % 2); // Include padding
-              preInfoContentEnd = scanOffset; // Content before this INFO chunk
+              existingInfoListEndOffset = scanOffset + 8 + currentChunkSize + (currentChunkSize % 2); 
               break;
           }
       }
@@ -350,27 +340,22 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
       if(currentChunkSize % 2 !== 0) scanOffset++;
   }
 
-
   const part1End = existingInfoListChunk ? existingInfoListChunk.offset : insertionPoint;
   const part1 = buffer.slice(0, part1End);
 
-
   let infoSubChunksData: Uint8Array;
   if (existingInfoListChunk) {
-      // Rebuild existing INFO chunk, removing old ICMT if present, then add new one
       const oldInfoDataStart = existingInfoListChunk.dataOffset;
-      const oldInfoDataSize = existingInfoListChunk.size - 4; // -4 for 'INFO' type
+      const oldInfoDataSize = existingInfoListChunk.size - 4; 
       let tempBuffer = new ArrayBuffer(oldInfoDataSize);
-      // let tempView = new DataView(tempBuffer); // This tempView is not used
       let tempOffset = 0;
-
       let currentSubChunkOffset = oldInfoDataStart;
       const endSubChunkScan = oldInfoDataStart + oldInfoDataSize;
 
       while(currentSubChunkOffset < endSubChunkScan) {
           const subId = String.fromCharCode(originalView.getUint8(currentSubChunkOffset), originalView.getUint8(currentSubChunkOffset+1), originalView.getUint8(currentSubChunkOffset+2), originalView.getUint8(currentSubChunkOffset+3));
           const subSize = originalView.getUint32(currentSubChunkOffset+4, true);
-          if (subId !== 'ICMT') { // Copy other sub-chunks
+          if (subId !== 'ICMT') { 
               const chunkToCopy = new Uint8Array(buffer, currentSubChunkOffset, 8 + subSize + (subSize % 2));
               new Uint8Array(tempBuffer, tempOffset, chunkToCopy.length).set(chunkToCopy);
               tempOffset += chunkToCopy.length;
@@ -378,7 +363,6 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
           currentSubChunkOffset += 8 + subSize;
           if(subSize % 2 !== 0) currentSubChunkOffset++;
       }
-      // Append new ICMT
       const combinedSubChunks = new Uint8Array(tempOffset + newIcmtChunkBytes.length);
       combinedSubChunks.set(new Uint8Array(tempBuffer, 0, tempOffset), 0);
       combinedSubChunks.set(newIcmtChunkBytes, tempOffset);
@@ -387,19 +371,17 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
       infoSubChunksData = newIcmtChunkBytes;
   }
 
-  const infoListChunkSize = 4 + infoSubChunksData.length; // 4 for 'INFO' type + data
-  // const paddedInfoListChunkSize = infoListChunkSize + (infoListChunkSize % 2); // LIST chunk total size (incl. 'INFO' type) needs to be even IF its data part is odd // Not used
+  const infoListChunkSize = 4 + infoSubChunksData.length; 
 
   const listChunkHeader = new Uint8Array(12);
   const listView = new DataView(listChunkHeader.buffer);
   listView.setUint8(0, 'L'.charCodeAt(0)); listView.setUint8(1, 'I'.charCodeAt(0)); listView.setUint8(2, 'S'.charCodeAt(0)); listView.setUint8(3, 'T'.charCodeAt(0));
-  listView.setUint32(4, infoListChunkSize, true); // Size of 'INFO' + sub-chunks
+  listView.setUint32(4, infoListChunkSize, true); 
   listView.setUint8(8, 'I'.charCodeAt(0)); listView.setUint8(9, 'N'.charCodeAt(0)); listView.setUint8(10, 'F'.charCodeAt(0)); listView.setUint8(11, 'O'.charCodeAt(0));
   
-  const finalInfoListChunk = new Uint8Array(12 + infoSubChunksData.length + (infoSubChunksData.length % 2)); // Pad if infoSubChunksData is odd
+  const finalInfoListChunk = new Uint8Array(12 + infoSubChunksData.length + (infoSubChunksData.length % 2)); 
   finalInfoListChunk.set(listChunkHeader, 0);
   finalInfoListChunk.set(infoSubChunksData, 12);
-
 
   const part3Start = existingInfoListChunk ? existingInfoListEndOffset : insertionPoint;
   const part3 = buffer.slice(part3Start);
@@ -412,7 +394,6 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
   new Uint8Array(newBuffer).set(finalInfoListChunk, part1.byteLength);
   new Uint8Array(newBuffer).set(new Uint8Array(part3), part1.byteLength + finalInfoListChunk.byteLength);
 
-  // Update RIFF file size
   newView.setUint32(4, newTotalSize - 8, true);
 
   const blob = new Blob([newBuffer], { type: 'audio/wav' });
@@ -450,7 +431,7 @@ export async function extractMessageFromWavMetadata(file: File): Promise<string>
 }
 
 
-// --- Generic Export/Conversion ---
+// Generic Export/Conversion
 export async function convertObjectUrlToDataUri(objectUrl: string): Promise<string> {
   const response = await fetch(objectUrl);
   if (!response.ok) throw new Error(`Erreur HTTP lors de la récupération de l'Object URL: ${response.status} ${response.statusText}`);
@@ -469,7 +450,7 @@ export async function convertObjectUrlToDataUri(objectUrl: string): Promise<stri
   });
 }
 
-// --- Dispatcher function for embedding ---
+// Dispatcher function for embedding
 export async function embedMessageInAudio(file: File, message: string, algorithmId: string): Promise<string> {
   if (algorithmId === 'lsb_audio_wav') {
     return embedMessageInLSBAudio(file, message);
@@ -479,8 +460,7 @@ export async function embedMessageInAudio(file: File, message: string, algorithm
   throw new Error(`Algorithme audio d'intégration non supporté: ${algorithmId}`);
 }
 
-// --- Dispatcher function for extraction (optional, but good for consistency) ---
-// Not strictly needed by batch processing yet as it only embeds, but good for future use.
+// Dispatcher function for extraction
 export async function extractMessageFromAudio(file: File, algorithmId: string): Promise<string> {
   if (algorithmId === 'lsb_audio_wav') {
     return extractMessageFromLSBAudio(file);

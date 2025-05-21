@@ -1,3 +1,5 @@
+// File overview: Defines core TypeScript types and interfaces used throughout the application,
+// including steganography algorithm definitions, tool state, and file type options.
 
 import type { AlgorithmAdvisorOutput } from "@/ai/flows/algorithm-advisor";
 
@@ -10,18 +12,18 @@ export interface SteganographyAlgorithm {
   id: string;
   name: string;
   description: string;
-  supportedFileTypes: string[]; // e.g., ['image/png', 'audio/wav', 'text/plain']
+  supportedFileTypes: string[]; 
   isMetadataBased?: boolean;
   isTextBased?: boolean;
-  estimatedCapacity?: number; // For metadata-based algorithms primarily
+  estimatedCapacity?: number; 
 }
 
 export type OperationMode = 'embed' | 'extract';
 
 export interface CapacityInfo {
   capacityBytes: number;
-  width: number;
-  height: number;
+  width: number; 
+  height: number; 
   isEstimate?: boolean;
 }
 
@@ -32,7 +34,7 @@ export interface StegToolState {
   stegoFileDataUri: string | null;
 
   messageToEmbed: string;
-  extractedMessages: ExtractedMessageDetail[] | null; // Changed from string | null
+  extractedMessages: ExtractedMessageDetail[] | null; 
 
   selectedAlgorithmId: string | null;
   aiSuggestion: AlgorithmAdvisorOutput | null;
@@ -46,7 +48,7 @@ export interface StegToolState {
   capacityInfo: CapacityInfo | null;
 
   coverText?: string;
-  stegoText?: string;
+  stegoText?: string | null; 
   isGeneratingCoverText?: boolean;
 }
 

@@ -1,5 +1,6 @@
-
-"use client"; // Required for useState and useEffect
+// File overview: Defines the root layout for the application, including HTML structure,
+// theme management (light/dark mode), global styles, header, footer, and toaster.
+"use client";
 
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
@@ -20,7 +21,6 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-// Metadata is now an object, not a function, as we are client-side for theme
 export const metadataObject: Metadata = {
   title: "Steg'Engine - Outil de Stéganographie",
   description: "Votre boîte à outils complète pour les opérations de stéganographie.",
@@ -31,14 +31,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [theme, setTheme] = useState<string>('light'); // Default to light initially
+  const [theme, setTheme] = useState<string>('light');
 
   useEffect(() => {
     const storedTheme = localStorage.getItem('stegengine-theme');
     if (storedTheme) {
       setTheme(storedTheme);
     } else {
-      // No theme in localStorage, determine by time
       const currentHour = new Date().getHours();
       const nightStartHour = 19; // 7 PM
       const morningStartHour = 7;  // 7 AM

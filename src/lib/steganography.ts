@@ -1,3 +1,5 @@
+// File overview: Provides functions for image steganography, specifically for PNG files.
+// Includes LSB (Least Significant Bit) and metadata-based (tEXt chunk) methods.
 
 import type { CapacityInfo } from '@/types';
 
@@ -84,7 +86,7 @@ function calculateLsbCapacity(imageData: ImageData): number {
 
 // --- PNG Chunk Constants & Helpers ---
 const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; // Estimate for metadata based algorithms
+const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; 
 const PNG_METADATA_KEYWORD = "StegEngineMessage";
 
 // Standard CRC32 checksum function
@@ -107,7 +109,7 @@ function crc32(bytes: Uint8Array, start: number = 0, length: number = bytes.leng
     }
     return crc ^ 0xFFFFFFFF;
 }
-crc32.table = null as unknown as Uint32Array; // Static property for memoization
+crc32.table = null as unknown as Uint32Array; 
 
 
 // --- Public Steganography Functions ---
@@ -119,12 +121,12 @@ export async function getCapacityInfo(file: File, algorithmId: string): Promise<
 
   if (algorithmId === 'png_metadata_text') {
     let width = 0, height = 0;
-    try { // Try to get dimensions, but don't fail if it's just for capacity estimate
+    try { 
         const img = new Image();
         const url = URL.createObjectURL(file);
-        await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
+        await new Promise<void>((resolve, reject) => { // Added <void> for clarity
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error("Image load failed for dimensions"));
             img.src = url;
         });
         width = img.width;
@@ -202,7 +204,7 @@ async function embedMessageInLsbPng(file: File, message: string): Promise<string
     throw new Error('Impossible d\'obtenir le contexte du canvas pour écrire les données modifiées.');
   }
   ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL('image/png'); // This returns a Data URI
+  return canvas.toDataURL('image/png'); 
 }
 
 async function extractMessageFromLsbPng(file: File): Promise<string> {
@@ -279,25 +281,23 @@ async function embedMessageInPngMetadata(file: File, message: string): Promise<s
   const messageBytes = utf8Encode(message);
   const keywordBytes = utf8Encode(PNG_METADATA_KEYWORD);
   
-  // tEXt chunk data: keyword (no null) + null separator + text
   const textChunkData = new Uint8Array(keywordBytes.length + 1 + messageBytes.length);
   textChunkData.set(keywordBytes, 0);
-  textChunkData[keywordBytes.length] = 0; // Null separator
+  textChunkData[keywordBytes.length] = 0; 
   textChunkData.set(messageBytes, keywordBytes.length + 1);
 
   const newChunks: Uint8Array[] = [];
-  let offset = 8; // Skip PNG signature
+  let offset = 8; 
 
-  // Iterate over existing chunks, remove old StegEngineMessage chunk
   while (offset < originalBytes.length) {
     const view = new DataView(originalBytes.buffer, offset);
     const length = view.getUint32(0, false);
     const typeBytes = originalBytes.slice(offset + 4, offset + 8);
     const type = String.fromCharCode(...typeBytes);
     
-    const currentChunk = originalBytes.slice(offset, offset + 12 + length); // Full chunk including length, type, data, CRC
+    const currentChunk = originalBytes.slice(offset, offset + 12 + length); 
 
-    if (type === 'IEND') { // Stop before IEND, we'll add it back later
+    if (type === 'IEND') { 
       break; 
     }
 
@@ -313,7 +313,6 @@ async function embedMessageInPngMetadata(file: File, message: string): Promise<s
     offset += 12 + length;
   }
 
-  // Create the new tEXt chunk
   const tEXtTypeBytes = utf8Encode("tEXt");
   const chunkContentForCrc = new Uint8Array(tEXtTypeBytes.length + textChunkData.length);
   chunkContentForCrc.set(tEXtTypeBytes, 0);
@@ -323,18 +322,16 @@ async function embedMessageInPngMetadata(file: File, message: string): Promise<s
 
   const newTextChunk = new Uint8Array(12 + textChunkData.length);
   const newChunkView = new DataView(newTextChunk.buffer);
-  newChunkView.setUint32(0, textChunkData.length, false); // Length of data part
-  newTextChunk.set(tEXtTypeBytes, 4);                     // Type 'tEXt'
-  newTextChunk.set(textChunkData, 8);                     // Data
-  newChunkView.setUint32(8 + textChunkData.length, crc, false); // CRC
+  newChunkView.setUint32(0, textChunkData.length, false); 
+  newTextChunk.set(tEXtTypeBytes, 4);                     
+  newTextChunk.set(textChunkData, 8);                     
+  newChunkView.setUint32(8 + textChunkData.length, crc, false); 
 
   newChunks.push(newTextChunk);
 
-  // Add back IEND chunk (it's always 0-length data, specific CRC)
-  const iendChunk = new Uint8Array([0,0,0,0, 73,69,78,68, 174,66,96,130]); // Length 0, Type IEND, standard CRC
+  const iendChunk = new Uint8Array([0,0,0,0, 73,69,78,68, 174,66,96,130]); 
   newChunks.push(iendChunk);
 
-  // Concatenate all parts: signature + processed chunks
   let totalNewLength = PNG_SIGNATURE.length;
   newChunks.forEach(chunk => totalNewLength += chunk.length);
   
@@ -370,24 +367,21 @@ async function extractMessageFromPngMetadata(file: File): Promise<string> {
       const chunkDataStart = offset + 8;
       const chunkDataEnd = chunkDataStart + length;
       
-      // Check for keyword
-      if (length > keywordBytes.length && bytes[chunkDataStart + keywordBytes.length] === 0) { // Check for null terminator
+      if (length > keywordBytes.length && bytes[chunkDataStart + keywordBytes.length] === 0) { 
         const currentKeyword = bytes.slice(chunkDataStart, chunkDataStart + keywordBytes.length);
         if (keywordBytes.every((val, idx) => val === currentKeyword[idx])) {
-          // Keyword matches, extract text
           const messageData = bytes.slice(chunkDataStart + keywordBytes.length + 1, chunkDataEnd);
           return utf8Decode(messageData);
         }
       }
     }
     
-    if (type === 'IEND') break; // Stop at IEND
-    offset += 12 + length; // Move to next chunk (length + type + data + CRC)
+    if (type === 'IEND') break; 
+    offset += 12 + length; 
   }
-  return ""; // No message found or keyword didn't match
+  return ""; 
 }
 
-// Helper to convert Object URL to Data URI, useful for consistent export/preview
 export async function convertObjectUrlToDataUri(objectUrl: string): Promise<string> {
   const response = await fetch(objectUrl);
   if (!response.ok) throw new Error(`Erreur HTTP lors de la récupération de l'Object URL: ${response.status} ${response.statusText}`);

@@ -1,3 +1,5 @@
+// File overview: Component displaying the "Why Choose Us" section on the homepage,
+// highlighting key features of the Steg'Engine application.
 "use client";
 
 import { ShieldCheck, Wrench, Users } from "lucide-react";

@@ -16,7 +16,7 @@ import {z} from 'genkit';
 const AlgorithmAdvisorInputSchema = z.object({
   fileType: z
     .string()
-    .describe("Le type de fichier pour cacher le message (ex: 'image', 'audio', 'texte', 'pdf')."), // Removed 'vidéo'
+    .describe("Le type de fichier pour cacher le message (ex: 'image', 'audio', 'texte', 'pdf')."),
   message: z.string().describe('Le message à cacher.'),
   availableAlgorithms: z.array(z.string()).describe('Liste des noms des algorithmes disponibles parmi lesquels choisir.'),
 });
@@ -70,4 +70,3 @@ const algorithmAdvisorFlow = ai.defineFlow(
     return output!;
   }
 );
-

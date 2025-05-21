@@ -1,4 +1,6 @@
-
+// File overview: The main landing page for the Steg'Engine application.
+// Displays a hero section, an AI algorithm advisor, a grid of steganography tools,
+// and a "Why Choose Us" section.
 "use client";
 
 import Image from "next/image";
@@ -8,7 +10,7 @@ import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
 import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, Music, FileText, FileQuestion as PdfIconLucide, Layers, ArrowRight } from "lucide-react"; // Renamed FileQuestion to PdfIconLucide
+import { ImageIcon, Music, FileText, FileQuestionIcon as PdfIconLucide, Layers, ArrowRight } from "lucide-react";
 
 const tools = [
   {
@@ -34,8 +36,8 @@ const tools = [
   },
   {
     name: "Stéganographie PDF",
-    description: "Cachez des informations dans les métadonnées de documents PDF (champ Sujet).", // Updated description
-    icon: <PdfIconLucide className="w-10 h-10 text-primary" />, // Using renamed import
+    description: "Cachez des informations dans les métadonnées de documents PDF (champ Sujet).",
+    icon: <PdfIconLucide className="w-10 h-10 text-primary" />,
     href: "/pdf-steg",
     status: "available", 
   },
@@ -50,13 +52,11 @@ const tools = [
 
 export default function HomePage() {
   const handleAiSuggestionHomepage = (suggestion: AlgorithmAdvisorOutput) => {
-    // Placeholder for homepage specific action if needed, for now, toast is handled by the card
     console.log("AI Suggestion on homepage:", suggestion);
   };
 
   return (
     <div className="space-y-12">
-      {/* Hero Section */}
       <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
         <div className="flex-shrink-0 mx-auto md:mx-0">
           <Image
@@ -83,7 +83,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* AI Algorithm Advisor Section */}
       <section className="py-8">
         <h2 className="text-3xl font-bold text-center text-foreground mb-10">Conseiller d'Algorithme IA</h2>
         <div className="max-w-2xl mx-auto">
@@ -91,8 +90,6 @@ export default function HomePage() {
         </div>
       </section>
       
-
-      {/* Tools Grid Section */}
       <section className="py-8">
         <h2 className="text-3xl font-bold text-center text-foreground mb-10">Nos Outils</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

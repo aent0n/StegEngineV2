@@ -1,4 +1,5 @@
-
+// File overview: Component that provides an AI-powered steganography algorithm advisor.
+// Users input file type and message description to get a suggestion.
 "use client";
 
 import type React from 'react';
@@ -21,7 +22,7 @@ import { fileTypeOptions, type FileTypeOption, mockAlgorithms } from "@/types";
 
 
 const advisorSchema = z.object({
-  fileType: z.enum(['image', 'audio', 'text', 'pdf', 'video'], {
+  fileType: z.enum(['image', 'audio', 'text', 'pdf'], { // Removed 'video'
     required_error: "Le type de fichier est requis.",
   }),
   message: z.string().min(1, "Le message ne peut pas être vide.").max(500, "Message trop long (max 500 caractères)."),

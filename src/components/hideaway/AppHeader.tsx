@@ -1,4 +1,5 @@
-
+// File overview: Defines the global header component for the Steg'Engine application.
+// Includes the application logo, name, and a theme toggle button.
 "use client";
 
 import Image from 'next/image';

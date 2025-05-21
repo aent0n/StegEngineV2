@@ -1,4 +1,5 @@
-
+// File overview: Page component for the Audio Steganography tool.
+// Allows users to embed and extract messages in audio files using various algorithms.
 "use client";
 
 import type React from 'react';
@@ -23,7 +24,7 @@ const initialState: StegToolState = {
   filePreviewUrl: null, 
   stegoFileDataUri: null,
   messageToEmbed: "",
-  extractedMessages: null, // Changed
+  extractedMessages: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -52,7 +53,7 @@ export default function AudioStegPage() {
       fileName: clearFileSelection ? null : prev.fileName,
       filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl,
       stegoFileDataUri: null,
-      extractedMessages: null, // Changed
+      extractedMessages: null,
       statusMessage: null,
       capacityInfo: null, 
     }));
@@ -85,7 +86,7 @@ export default function AudioStegPage() {
         filePreviewUrl: null, 
         stegoFileDataUri: null,
         statusMessage: null,
-        extractedMessages: null, // Changed
+        extractedMessages: null,
         capacityInfo: null, 
       }));
 
@@ -112,7 +113,7 @@ export default function AudioStegPage() {
 
   const handleAlgorithmChange = async (algorithmId: string) => {
     resetStateForNewFile(false); 
-    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null })); // Changed
+    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null }));
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
     if (state.carrierFile && newSelectedAlgorithm) {
@@ -135,7 +136,7 @@ export default function AudioStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessages: null, // Changed
+      extractedMessages: null,
     }));
   };
 
@@ -224,7 +225,7 @@ export default function AudioStegPage() {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier audio." });
       return;
     }
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null }));
     
     const foundMessages: ExtractedMessageDetail[] = [];
     let extractionErrorOccurred = false;
@@ -274,7 +275,7 @@ export default function AudioStegPage() {
     }
   };
   
-  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+  const handleCopyExtractedMessage = async (message: string) => {
     if (!message) {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
@@ -304,8 +305,6 @@ export default function AudioStegPage() {
     
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract'));
-  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
-
 
   return (
     <div className="space-y-8">
@@ -343,9 +342,8 @@ export default function AudioStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage}
-            extractedMessages={state.extractedMessages} // Changed
+            extractedMessages={state.extractedMessages}
           />
         </div>
       </div>

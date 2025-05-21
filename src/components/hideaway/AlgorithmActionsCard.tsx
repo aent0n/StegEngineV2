@@ -1,4 +1,5 @@
-
+// File overview: Component for selecting steganography algorithms and performing actions
+// like embedding, extracting, exporting, and copying messages. Adapts its UI based on operation mode.
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,12 @@ export default function AlgorithmActionsCard({
     <Card className="shadow-lg hover:shadow-xl transition-shadow">
       <CardHeader>
         <CardTitle className="text-xl">Mode Opératoire & Actions</CardTitle>
-        <CardDescription>Choisissez un mode, {operationMode === 'embed' ? "un algorithme, " : ""}puis lancez l'opération.</CardDescription>
+        <CardDescription>
+          {operationMode === 'embed' 
+            ? "Choisissez un algorithme, puis lancez l'opération."
+            : "Lancez l'extraction pour rechercher des messages cachés."
+          }
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs value={operationMode} onValueChange={(value) => onOperationModeChange(value as OperationMode)} className="w-full">
@@ -108,7 +114,7 @@ export default function AlgorithmActionsCard({
           </div>
         )}
         
-        {operationMode === 'extract' && selectedAlgorithm && (
+        {operationMode === 'extract' && (
              <p className="text-sm text-muted-foreground mt-2 p-2 bg-secondary/30 rounded-md">
                 L'extraction tentera d'utiliser tous les algorithmes compatibles pour ce type de fichier.
             </p>
@@ -248,6 +254,3 @@ export default function AlgorithmActionsCard({
     </Card>
   );
 }
-    
-
-    

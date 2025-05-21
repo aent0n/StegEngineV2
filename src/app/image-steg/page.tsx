@@ -1,4 +1,5 @@
-
+// File overview: Page component for the Image Steganography tool.
+// Allows users to embed and extract messages in PNG images using LSB or metadata techniques.
 "use client";
 
 import type React from 'react';
@@ -18,7 +19,7 @@ const initialState: StegToolState = {
   filePreviewUrl: null,
   stegoFileDataUri: null, 
   messageToEmbed: "",
-  extractedMessages: null, // Changed
+  extractedMessages: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -51,7 +52,7 @@ export default function ImageStegPage() {
       fileName: clearFileSelection ? null : prev.fileName,
       filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl,
       stegoFileDataUri: null,
-      extractedMessages: null, // Changed
+      extractedMessages: null,
       statusMessage: null,
       capacityInfo: null, 
     }));
@@ -70,9 +71,6 @@ export default function ImageStegPage() {
     
     if (file) {
       const currentSelectedAlgo = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
-      // For image page, any algorithm in availableAlgorithms should support the main file types for images
-      // For more strictness, one could filter availableAlgorithms by file.type first, then select.
-      // But for now, we check against the current selected algorithm.
       if (!currentSelectedAlgo?.supportedFileTypes.includes(file.type)) {
          toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'image/png'}).` });
         event.target.value = ""; 
@@ -88,7 +86,7 @@ export default function ImageStegPage() {
         filePreviewUrl,
         stegoFileDataUri: null,
         statusMessage: null,
-        extractedMessages: null, // Changed
+        extractedMessages: null,
         capacityInfo: null, 
       }));
 
@@ -121,7 +119,7 @@ export default function ImageStegPage() {
 
   const handleAlgorithmChange = async (algorithmId: string) => {
     resetStateForNewFile(false); 
-    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null })); // Changed
+    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null }));
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
     if (state.carrierFile && newSelectedAlgorithm) {
@@ -150,7 +148,7 @@ export default function ImageStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessages: null, // Changed
+      extractedMessages: null,
     }));
   };
 
@@ -243,11 +241,11 @@ export default function ImageStegPage() {
         fileForExtraction = state.carrierFile;
     }
 
-    if (!fileForExtraction) { // Removed selectedAlgorithmForUI check here as we iterate
+    if (!fileForExtraction) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier." });
       return;
     }
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null }));
     
     const foundMessages: ExtractedMessageDetail[] = [];
     let extractionErrorOccurred = false;
@@ -268,7 +266,6 @@ export default function ImageStegPage() {
         console.error(`Erreur d'extraction avec ${algo.name}:`, error);
         extractionErrorOccurred = true;
         lastErrorMessage = error.message;
-        // Don't toast for each algo failure, only a summary at the end
       }
     }
 
@@ -287,7 +284,7 @@ export default function ImageStegPage() {
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        extractedMessages: [], // Empty array instead of null
+        extractedMessages: [], 
         statusMessage: {type: extractionErrorOccurred ? 'error' : 'info', text: finalMessage}
       }));
       toast({ 
@@ -298,7 +295,7 @@ export default function ImageStegPage() {
     }
   };
   
-  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+  const handleCopyExtractedMessage = async (message: string) => {
     if (!message) {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
@@ -334,7 +331,6 @@ export default function ImageStegPage() {
     
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract'));
-  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
 
   const previewUrlForCard = state.operationMode === 'extract' && state.stegoFileDataUri 
                             ? state.stegoFileDataUri 
@@ -376,9 +372,8 @@ export default function ImageStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage}
-            extractedMessages={state.extractedMessages} // Changed
+            extractedMessages={state.extractedMessages}
           />
         </div>
       </div>

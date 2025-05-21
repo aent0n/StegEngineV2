@@ -1,4 +1,6 @@
-
+// File overview: Component for text-based steganography tools.
+// Handles input for cover text, message to embed, displays steganographic text,
+// and provides options for AI-generated cover text.
 "use client";
 
 import type React from 'react';
@@ -13,7 +15,7 @@ import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from '@/types';
 
 
 interface TextInteractionCardProps {
-  coverText: string; // This will be the primary text area: cover text in embed, stego text in extract
+  coverText: string;
   onCoverTextChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   
   messageToEmbed: string;
@@ -169,4 +171,3 @@ export default function TextInteractionCard({
     </Card>
   );
 }
-    

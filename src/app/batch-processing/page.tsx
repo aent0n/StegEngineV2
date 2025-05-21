@@ -1,4 +1,5 @@
-
+// File overview: Page component for the Batch Processing tool.
+// Allows users to process multiple files for steganography operations (embedding or extracting messages).
 "use client";
 
 import type React from 'react';
@@ -33,7 +34,7 @@ interface BatchFile {
   capacityInfo?: { realCapacityBytes?: number; messageFits?: boolean };
   stegoFileDataUri?: string; 
   stegoTextContent?: string; 
-  extractedMessages: ExtractedMessageDetail[] | null; // Changed to array for multiple messages
+  extractedMessages: ExtractedMessageDetail[] | null;
 }
 
 type OperationMode = 'embed' | 'extract';
@@ -313,6 +314,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
     }
 
     setIsProcessing(true); 
+    console.log("[Batch Processing] Démarrage du traitement. Mode:", operationMode);
 
     const filesToProcessMapped = selectedFiles.map(bf => {
         let newStatus = bf.status;
@@ -354,6 +356,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
     });
 
     setSelectedFiles(filesToProcessMapped);
+    console.log("[Batch Processing] Fichiers après mappage initial des statuts:", filesToProcessMapped.map(f => ({name: f.file.name, status: f.status, result: f.resultMessage})));
 
     const filesReadyForProcessingLoop = filesToProcessMapped.filter(f => f.status === 'processing');
     
@@ -376,43 +379,54 @@ const handleCopyExtracted = async (textToCopy?: string) => {
         return;
     }
 
+    console.log("[Batch Processing] Fichiers prêts pour la boucle de traitement:", filesReadyForProcessingLoop.map(f => f.file.name));
+
     for (const batchFile of filesReadyForProcessingLoop) { 
+      console.log(`[Batch Processing] Traitement de: ${batchFile.file.name}`);
       if (operationMode === 'embed') {
         const majorType = getMajorFileType(batchFile.file.type);
         const algorithmId = algorithmSelections[majorType]!; 
         const algorithmDetails = mockAlgorithms.find(algo => algo.id === algorithmId)!;
 
+        console.log(`[Batch Embed] File: ${batchFile.file.name}, Algo: ${algorithmDetails.name}, ID: ${algorithmId}`);
         setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: 'Vérification de capacité...' } : f));
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-
+        
         let realCapacityBytes = -1;
         let capacityCheckError: string | null = null;
 
         try {
-            if (algorithmDetails.isMetadataBased || algorithmDetails.id === 'pdf_metadata_simulated' || algorithmDetails.estimatedCapacity) {
+            console.log(`[Batch Embed Capacity Check] File: ${batchFile.file.name}, isMetadataBased: ${algorithmDetails.isMetadataBased}, estimatedCapacity: ${algorithmDetails.estimatedCapacity}`);
+            if (algorithmDetails.isMetadataBased || algorithmDetails.estimatedCapacity) {
                 if (algorithmDetails.estimatedCapacity) {
                     realCapacityBytes = algorithmDetails.estimatedCapacity;
+                    console.log(`[Batch Embed Capacity Check] Using estimatedCapacity: ${realCapacityBytes}`);
                 } else {
                     capacityCheckError = `Capacité estimée non disponible pour ${algorithmDetails.name}.`;
+                    console.warn(`[Batch Embed Capacity Check] ${capacityCheckError}`);
                 }
             } else if (majorType === 'image') {
                 const capacity = await getImageCapacityInfo(batchFile.file, algorithmId);
                 realCapacityBytes = capacity.capacityBytes;
+                 console.log(`[Batch Embed Capacity Check - Image] Real capacity: ${realCapacityBytes}`);
             } else if (majorType === 'audio') {
                 const capacity = await getAudioCapacityInfo(batchFile.file, algorithmId);
                 realCapacityBytes = capacity.capacityBytes;
+                console.log(`[Batch Embed Capacity Check - Audio] Real capacity: ${realCapacityBytes}`);
             } else if (majorType === 'text') {
                 const textContent = await batchFile.file.text();
                 const capacity = await getTextCapacityInfo(textContent, algorithmId);
                 realCapacityBytes = capacity.capacityBytes;
+                console.log(`[Batch Embed Capacity Check - Text] Real capacity: ${realCapacityBytes}`);
             } else if (majorType === 'application/pdf' && algorithmId === 'pdf_metadata_simulated') {
                  const capacity = await getPdfCapacityInfo(batchFile.file, algorithmId);
                  realCapacityBytes = capacity.capacityBytes;
+                 console.log(`[Batch Embed Capacity Check - PDF] Real capacity: ${realCapacityBytes}`);
             } else {
                 capacityCheckError = `Type de fichier non supporté pour vérification de capacité: ${majorType}`;
+                 console.warn(`[Batch Embed Capacity Check] ${capacityCheckError}`);
             }
         } catch (e: any) {
-            console.error(`[Batch Capacity Check - ERROR] File: ${batchFile.file.name} (${algorithmDetails.name}):`, e);
+            console.error(`[Batch Embed Capacity Check - ERROR] File: ${batchFile.file.name} (${algorithmDetails.name}):`, e);
             capacityCheckError = `Erreur capacité: ${e.message.substring(0, 100)}`;
         }
 
@@ -423,10 +437,12 @@ const handleCopyExtracted = async (textToCopy?: string) => {
 
         if (realCapacityBytes !== -1 && messageToEmbedBytes > realCapacityBytes) {
             const capErrorMsg = `Message trop long (${messageToEmbedBytes}o). Capacité: ${realCapacityBytes}o.`;
+            console.warn(`[Batch Embed Capacity Check - Capacity Error] File: ${batchFile.file.name}, ${capErrorMsg}`);
             setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, status: 'capacity_error', resultMessage: capErrorMsg } : f));
             continue; 
         }
 
+        console.log(`[Batch Embed] File: ${batchFile.file.name}, Capacité OK. Message: ${messageToEmbedBytes}o, Capacité Fichier: ${realCapacityBytes}o. Intégration...`);
         setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Intégration (${algorithmDetails.name})...` } : f));
         
         try {
@@ -442,19 +458,24 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                     objectUrlToRevoke = result;
                     processedFileData = await convertImageObjectUrlToDataUri(result);
                 }
+                console.log(`[Batch Embed - Image] Succès: ${batchFile.file.name}`);
             } else if (majorType === 'audio') {
                 objectUrlToRevoke = await embedMessageInAudio(batchFile.file, messageToEmbed, algorithmId);
                 processedFileData = await convertAudioObjectUrlToDataUri(objectUrlToRevoke);
+                 console.log(`[Batch Embed - Audio] Succès: ${batchFile.file.name}`);
             } else if (majorType === 'text') {
                 const textContent = await batchFile.file.text(); 
                 processedTextContent = await embedMessageInText(textContent, messageToEmbed, algorithmId);
+                console.log(`[Batch Embed - Text] Succès: ${batchFile.file.name}`);
             } else if (majorType === 'application/pdf') {
                 objectUrlToRevoke = await embedMessageInPdf(batchFile.file, messageToEmbed, algorithmId);
                 processedFileData = await convertPdfObjectUrlToDataUri(objectUrlToRevoke);
+                console.log(`[Batch Embed - PDF] Succès: ${batchFile.file.name}`);
             }
             
             if (objectUrlToRevoke) {
                 URL.revokeObjectURL(objectUrlToRevoke);
+                console.log(`[Batch Embed] Object URL révoqué pour ${batchFile.file.name}`);
             }
 
             setSelectedFiles(prev =>
@@ -483,32 +504,36 @@ const handleCopyExtracted = async (textToCopy?: string) => {
       } else { // operationMode === 'extract'
           const majorType = getMajorFileType(batchFile.file.type);
           const compatibleAlgorithms = getCompatibleAlgorithms(majorType);
+          console.log(`[Batch Extract] File: ${batchFile.file.name}, Algorithmes compatibles: ${compatibleAlgorithms.map(a=>a.name).join(', ')}`);
           setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Analyse (${compatibleAlgorithms.length} algos)...` } : f));
           
           const foundMessagesForFile: ExtractedMessageDetail[] = [];
           let extractionError: string | null = null;
 
           if (compatibleAlgorithms.length === 0) {
+              console.warn(`[Batch Extract] File: ${batchFile.file.name}, Aucun algorithme compatible.`);
               setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, status: 'incompatible', resultMessage: `Aucun algorithme compatible pour extraction.` } : f));
               continue;
           }
 
           for (const algo of compatibleAlgorithms) {
+              console.log(`[Batch Extract] File: ${batchFile.file.name}, Tentative avec ${algo.name}...`);
+              setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Tentative avec ${algo.name}...` } : f));
               try {
-                  setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Tentative avec ${algo.name}...` } : f));
                   let currentExtractedText = "";
                   if (majorType === 'image') {
                       currentExtractedText = await extractMessageFromImage(batchFile.file, algo.id);
                   } else if (majorType === 'audio') {
                       currentExtractedText = await extractMessageFromAudio(batchFile.file, algo.id);
                   } else if (majorType === 'text') {
-                      const textContent = await batchFile.file.text(); // Need to read text file content
+                      const textContent = await batchFile.file.text();
                       currentExtractedText = await extractMessageFromText(textContent, algo.id);
                   } else if (majorType === 'application/pdf') {
                       currentExtractedText = await extractMessageFromPdf(batchFile.file, algo.id);
                   }
 
                   if (currentExtractedText && currentExtractedText.trim().length > 0) {
+                      console.log(`[Batch Extract] File: ${batchFile.file.name}, Message trouvé avec ${algo.name}: "${currentExtractedText.substring(0,30)}..."`);
                       foundMessagesForFile.push({ algorithmName: algo.name, message: currentExtractedText });
                   }
               } catch (e: any) {
@@ -518,6 +543,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
           }
 
           if (foundMessagesForFile.length > 0) {
+              console.log(`[Batch Extract] File: ${batchFile.file.name}, Succès. ${foundMessagesForFile.length} message(s) extrait(s).`);
               setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? {
                   ...f,
                   status: 'success',
@@ -525,6 +551,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                   extractedMessages: foundMessagesForFile,
               } : f));
           } else {
+              console.log(`[Batch Extract] File: ${batchFile.file.name}, Aucun message trouvé.`);
               setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? {
                   ...f,
                   status: 'not_found',
@@ -533,9 +560,11 @@ const handleCopyExtracted = async (textToCopy?: string) => {
               } : f));
           }
       }
+      console.log(`[Batch Processing] Traitement de ${batchFile.file.name} terminé.`);
     } 
-
+    console.log("[Batch Processing] Boucle de traitement principale terminée.");
     setIsProcessing(false); 
+    console.log("[Batch Processing] isProcessing mis à false.");
   };
 
   const allRequiredAlgorithmsSelected = operationMode === 'extract' || detectedFileTypes.length === 0 || detectedFileTypes.every(type => {
@@ -664,7 +693,7 @@ const handleCopyExtracted = async (textToCopy?: string) => {
             {selectedFiles.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">Aucun fichier sélectionné pour le moment.</p>
             ) : (
-              <ScrollArea className="h-[400px] pr-4"> {/* Added pr-4 for scrollbar padding */}
+              <ScrollArea className="h-[400px] pr-4">
                 <ul className="space-y-3">
                   {selectedFiles.map((batchFile) => {
                     const majorType = getMajorFileType(batchFile.file.type);
@@ -700,7 +729,6 @@ const handleCopyExtracted = async (textToCopy?: string) => {
                                     <span className="sr-only">Télécharger</span>
                                 </Button>
                             )}
-                            {/* Copy button for extracted messages will be handled below if extractedMessages array exists */}
                             <Button variant="ghost" size="icon" onClick={() => removeFile(batchFile.id)} disabled={isProcessing} className="h-7 w-7">
                               <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                               <span className="sr-only">Retirer</span>

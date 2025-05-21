@@ -1,4 +1,5 @@
-
+// File overview: Page component for the PDF Steganography tool.
+// Allows users to embed and extract messages in PDF metadata (Subject field).
 "use client";
 
 import type React from 'react';
@@ -18,7 +19,7 @@ const initialState: StegToolState = {
   filePreviewUrl: null, 
   stegoFileDataUri: null, 
   messageToEmbed: "",
-  extractedMessages: null, // Changed
+  extractedMessages: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -50,7 +51,7 @@ export default function PdfStegPage() {
       fileName: clearFileSelection ? null : prev.fileName,
       filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl, 
       stegoFileDataUri: null,
-      extractedMessages: null, // Changed
+      extractedMessages: null,
       statusMessage: null,
       capacityInfo: null,
     }));
@@ -83,7 +84,7 @@ export default function PdfStegPage() {
         filePreviewUrl: null, 
         stegoFileDataUri: null, 
         statusMessage: null,
-        extractedMessages: null, // Changed
+        extractedMessages: null,
         capacityInfo: null, 
       }));
 
@@ -110,7 +111,7 @@ export default function PdfStegPage() {
 
   const handleAlgorithmChange = async (algorithmId: string) => {
     resetStateForNewFile(false); 
-    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null })); // Changed
+    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null }));
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
     if (state.carrierFile && newSelectedAlgorithm) {
@@ -133,7 +134,7 @@ export default function PdfStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessages: null, // Changed
+      extractedMessages: null,
     }));
   };
 
@@ -224,13 +225,13 @@ export default function PdfStegPage() {
       return;
     }
 
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null }));
     
     const foundMessages: ExtractedMessageDetail[] = [];
     let extractionErrorOccurred = false;
     let lastErrorMessage = "";
 
-    for (const algo of availableAlgorithms) { // Should only be one for PDF, but loop is fine
+    for (const algo of availableAlgorithms) {
         if (!fileForExtraction.type || !algo.supportedFileTypes.includes(fileForExtraction.type)) {
             console.log(`Skipping ${algo.name} for ${fileForExtraction.name} as it does not support ${fileForExtraction.type}`);
             continue;
@@ -275,7 +276,7 @@ export default function PdfStegPage() {
     }
   };
   
-  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+  const handleCopyExtractedMessage = async (message: string) => {
     if (!message) {
       toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
@@ -304,7 +305,6 @@ export default function PdfStegPage() {
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract'));
-  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
 
   return (
     <div className="space-y-8">
@@ -342,9 +342,8 @@ export default function PdfStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage}
-            extractedMessages={state.extractedMessages} // Changed
+            extractedMessages={state.extractedMessages}
           />
         </div>
       </div>

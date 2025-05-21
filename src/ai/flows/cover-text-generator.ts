@@ -71,5 +71,3 @@ const coverTextGeneratorFlow = ai.defineFlow(
     return output;
   }
 );
-
-    

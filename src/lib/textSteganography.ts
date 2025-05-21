@@ -1,12 +1,14 @@
+// File overview: Provides functions for text steganography.
+// Includes methods like whitespace steganography and zero-width character (ZWC) steganography.
 
 import type { CapacityInfo } from '@/types';
-import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from '@/types'; // Import new algo type
+import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from '@/types';
 
-const MESSAGE_LENGTH_BITS_TEXT = 32; // Bits to store the length of the (binary) message
+const MESSAGE_LENGTH_BITS_TEXT = 32; 
 
 // ZWC Constants
-const ZW_SPACE = '\u200B'; // Represents bit '0'
-const ZW_NON_JOINER = '\u200C'; // Represents bit '1'
+const ZW_SPACE = '\u200B'; 
+const ZW_NON_JOINER = '\u200C'; 
 
 // --- UTF-8 Helpers ---
 function utf8Encode(text: string): Uint8Array {
@@ -48,7 +50,7 @@ function numberToBinary(num: number, bits: number): string {
   if (binary.length > bits) {
       throw new Error(`Nombre ${num} trop grand pour être représenté en ${bits} bits.`);
   }
-  return '0'.repeat(Math.max(0, bits - binary.length)) + binary; // Ensure non-negative repeat
+  return '0'.repeat(Math.max(0, bits - binary.length)) + binary; 
 }
 
 
@@ -70,7 +72,7 @@ async function embedMessageInTextWhitespace(coverText: string, message: string):
   if (!coverText) {
     throw new Error("Le texte porteur ne peut pas être vide.");
   }
-  message = message || ""; // Handle empty message
+  message = message || ""; 
 
   const messageBinary = textToBinary(message);
   const messageLengthInBits = messageBinary.length;
@@ -139,8 +141,6 @@ async function extractMessageFromTextWhitespace(stegoText: string): Promise<stri
 
 // --- Zero-Width Characters (ZWC) Algorithm Specific Functions ---
 async function getTextCapacityInfoZWC(coverText: string): Promise<CapacityInfo> {
-  // Capacity is 1 bit per character of the cover text, minus bits for length.
-  // We only consider non-ZWC characters from the cover text for capacity calculation.
   const cleanCoverText = coverText.replace(new RegExp(`[${ZW_SPACE}${ZW_NON_JOINER}]`, 'g'), '');
   const availableBitsForPayload = cleanCoverText.length - MESSAGE_LENGTH_BITS_TEXT;
 
@@ -170,12 +170,10 @@ async function embedMessageInTextZWC(coverText: string, message: string): Promis
   let stegoText = "";
   let dataBitIndex = 0;
   
-  // Iterate over the cover text, inserting ZWCs *after* each original character
   for (let i = 0; i < coverText.length; i++) {
     const coverChar = coverText[i];
-    // Skip existing ZWCs in cover text to avoid issues and base capacity on visible chars
     if (coverChar === ZW_SPACE || coverChar === ZW_NON_JOINER) {
-        stegoText += coverChar; // Preserve them if they were there, but don't use for embedding
+        stegoText += coverChar; 
         continue;
     }
     
@@ -187,11 +185,7 @@ async function embedMessageInTextZWC(coverText: string, message: string): Promis
     }
   }
   
-  // If cover text was shorter than data to embed (should be caught by capacity check, but as a safeguard)
   if (dataBitIndex < dataToEmbedBinary.length) {
-      // This case implies the capacity check failed or was bypassed.
-      // We could throw, or append remaining ZWCs if we absolutely must.
-      // For now, this scenario indicates an issue with capacity calculation or logic.
       console.warn("Tentative d'intégration ZWC au-delà de la longueur du texte porteur nettoyé. Message pourrait être tronqué si la capacité était mal calculée.");
        while(dataBitIndex < dataToEmbedBinary.length) {
            const bit = dataToEmbedBinary[dataBitIndex];

@@ -1,4 +1,5 @@
-
+// File overview: Component for handling file uploads and displaying file information
+// for various steganography tools. Includes capacity display and message input for embedding.
 "use client";
 
 import type React from 'react';

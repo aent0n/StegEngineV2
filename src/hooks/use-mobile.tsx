@@ -1,3 +1,5 @@
+// File overview: Custom React hook to determine if the current viewport width
+// corresponds to a mobile device size based on a predefined breakpoint.
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
