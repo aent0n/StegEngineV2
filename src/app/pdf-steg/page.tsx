@@ -50,7 +50,7 @@ export default function PdfStegPage() {
       fileName: clearFileSelection ? null : prev.fileName,
       filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl, // PDF won't have image preview
       stegoFileDataUri: null,
-      extractedMessage: null,
+      extractedMessage: null, // Reset on new file or algo change
       statusMessage: null,
       capacityInfo: null,
     }));
@@ -75,13 +75,11 @@ export default function PdfStegPage() {
         return;
       }
       
-      // For PDFs, we don't generate a visual preview URL in the same way as images.
-      // FileUploadCard will show a generic file icon.
       setState(prev => ({
         ...prev,
         carrierFile: file,
         fileName: file.name,
-        filePreviewUrl: null, // No visual preview for PDF in FileUploadCard
+        filePreviewUrl: null, 
         stegoFileDataUri: null,
         statusMessage: null,
         extractedMessage: null, 
@@ -154,7 +152,7 @@ export default function PdfStegPage() {
       const stegoObjectUrl = await embedMessageInPdf(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
       
       if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
-      setObjectUrlToRevoke(stegoObjectUrl);
+      setObjectUrlToRevoke(stegoObjectUrl); // Manage the new Object URL
 
       setState(prev => ({ 
         ...prev, 
@@ -178,6 +176,7 @@ export default function PdfStegPage() {
     setState(prev => ({ ...prev, isExporting: true }));
     
     try {
+        // For PDFs, the stegoFileDataUri should be an Object URL created by embedMessageInPdf
         const a = document.createElement('a');
         a.href = state.stegoFileDataUri; 
         const fileNameBase = state.fileName.substring(0, state.fileName.lastIndexOf('.')) || state.fileName;
@@ -202,11 +201,12 @@ export default function PdfStegPage() {
     }
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
-      const extractedText = await extractMessageFromPdf(state.carrierFile, state.selectedAlgorithmId);
+      const extractedTextResult = await extractMessageFromPdf(state.carrierFile, state.selectedAlgorithmId);
+      console.log("[PdfStegPage] Texte extrait reçu de la fonction:", `"${extractedTextResult}"`);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        extractedMessage: extractedText, 
+        extractedMessage: extractedTextResult || "", // Ensure it's a string, even if empty
         statusMessage: {type: 'success', text:`Message extrait avec succès (${selectedAlgorithm.name}).`} 
       }));
       toast({ title: "Extraction Réussie", description: `Message extrait via ${selectedAlgorithm.name}.` });
@@ -231,6 +231,7 @@ export default function PdfStegPage() {
     }
   };
   
+  // Cleanup Object URLs
   useEffect(() => {
     const currentObjectUrl = objectUrlToRevoke;
     return () => {
@@ -241,9 +242,10 @@ export default function PdfStegPage() {
   }, [objectUrlToRevoke]);
 
   const messageBytesForEmbed = state.messageToEmbed ? new TextEncoder().encode(state.messageToEmbed).length : 0;
+  // For PDF metadata, capacity exceeded is more of a warning since it's an estimate.
   const isCapacityExceeded = state.capacityInfo && state.capacityInfo.isEstimate && (messageBytesForEmbed > state.capacityInfo.capacityBytes); 
     
-  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
+  const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ; // No direct !isCapacityExceeded check for estimated capacity
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
   const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;

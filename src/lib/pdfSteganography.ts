@@ -17,7 +17,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 // Helper to convert Base64 string to Uint8Array
 function base64ToUint8Array(base64: string): Uint8Array {
   try {
-    const binary_string = atob(base64);
+    const binary_string = atob(base64); // This can throw if base64 is invalid
     const len = binary_string.length;
     const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) {
@@ -26,6 +26,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
   } catch (e) {
     console.error("[PDF Lib] Erreur de décodage Base64:", e);
+    // Re-throw the error so the calling UI can handle it (e.g., show error toast)
     throw new Error(`Base64 decoding failed: ${(e as Error).message}`);
   }
 }
@@ -48,31 +49,33 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
     throw new Error(`Algorithme d'intégration PDF non supporté: ${algorithmId}`);
   }
 
+  // Dynamically import pdf-lib
+  const pdfLib = await import('pdf-lib');
+  if (!pdfLib || !pdfLib.PDFDocument) {
+      console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé. Retour au comportement simulé pour l'intégration.");
+      // Fallback to simulated behavior if pdf-lib is not available
+      const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
+      return URL.createObjectURL(blob); // Return original file
+  }
+  const { PDFDocument } = pdfLib;
+
   try {
-    const pdfLib = await import('pdf-lib');
-    if (!pdfLib || !pdfLib.PDFDocument) {
-        console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé. Retour au comportement simulé pour l'intégration.");
-        throw new Error("pdf-lib non chargé"); // This will be caught by the page's handler
-    }
-    const { PDFDocument } = pdfLib;
     const pdfBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(pdfBuffer);
 
     const messageBytes = new TextEncoder().encode(message);
     const base64EncodedMessage = uint8ArrayToBase64(messageBytes);
-
-    pdfDoc.setProducer(PDF_CUSTOM_METADATA_KEY + ":" + base64EncodedMessage);
-    // console.log("[PDF Embed] Producer set with:", PDF_CUSTOM_METADATA_KEY + ":" + base64EncodedMessage);
+    
+    const producerValue = PDF_CUSTOM_METADATA_KEY + ":" + base64EncodedMessage;
+    pdfDoc.setProducer(producerValue);
+    console.log("[PDF Embed] Tentative de définition du Producer à:", producerValue);
 
     const modifiedPdfBytes = await pdfDoc.save();
     const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
     return URL.createObjectURL(blob);
 
   } catch (err) {
-    console.warn(
-      "[PDF Lib] Tentative d'intégration PDF réelle (via Producer) échouée. Erreur:",
-      err
-    );
+    console.error("[PDF Embed] Erreur lors de l'intégration réelle du PDF:", err);
     // Let the error propagate to be handled by the page component
     throw new Error(`Erreur lors de l'intégration PDF: ${(err as Error).message}`);
   }
@@ -82,68 +85,68 @@ export async function extractMessageFromPdf(file: File, algorithmId: string): Pr
   if (algorithmId !== 'pdf_metadata_simulated') {
     throw new Error(`Algorithme d'extraction PDF non supporté: ${algorithmId}`);
   }
+  console.log("[PDF Extract] Tentative d'extraction réelle.");
 
-  console.log("[PDF Extract] Début de l'extraction.");
   const pdfLib = await import('pdf-lib');
   if (!pdfLib || !pdfLib.PDFDocument) {
       console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé. Impossible d'effectuer une extraction réelle.");
       throw new Error("pdf-lib non chargé pour l'extraction");
   }
   const { PDFDocument } = pdfLib;
-  const pdfBuffer = await file.arrayBuffer();
-  
+
   // Errors from PDFDocument.load, base64ToUint8Array, or TextDecoder will propagate
   // up to the caller (pdf-steg/page.tsx), which will handle UI updates for errors.
+  const pdfBuffer = await file.arrayBuffer();
   const pdfDoc = await PDFDocument.load(pdfBuffer);
 
   const producer = pdfDoc.getProducer();
-  console.log("[PDF Extract] Producer field raw value:", producer);
+  console.log("[PDF Extract] Valeur brute du champ Producer:", producer);
 
   if (producer && producer.startsWith(PDF_CUSTOM_METADATA_KEY + ":")) {
-      console.log("[PDF Extract] Producer field matches prefix.");
-      const base64EncodedMessage = producer.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
-      console.log("[PDF Extract] Extracted Base64 from Producer:", base64EncodedMessage);
+      console.log("[PDF Extract] Le champ Producer correspond au préfixe.");
+      const prefixLength = (PDF_CUSTOM_METADATA_KEY + ":").length;
+      const base64EncodedMessage = producer.substring(prefixLength);
+      console.log("[PDF Extract] Base64 extrait du Producer:", `"${base64EncodedMessage}"`);
 
-      if (base64EncodedMessage) {
-          // base64ToUint8Array will throw if atob fails
+      if (base64EncodedMessage && base64EncodedMessage.trim().length > 0) {
           const decodedBytes = base64ToUint8Array(base64EncodedMessage); 
-          console.log("[PDF Extract] Decoded bytes length from Producer:", decodedBytes.length);
-          
-          // new TextDecoder with fatal:true will throw if UTF-8 is invalid
+          console.log("[PDF Extract] Octets décodés depuis Producer (longueur):", decodedBytes.length);
+          // Use TextDecoder with fatal:true to ensure it throws on invalid UTF-8
           const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes); 
-          console.log("[PDF Extract] Decoded text from Producer:", extractedText);
+          console.log("[PDF Extract] Texte décodé depuis Producer:", `"${extractedText}"`);
           return extractedText;
       } else {
-          console.log("[PDF Extract] Base64 part in Producer is empty after prefix removal.");
+          console.log("[PDF Extract] La partie Base64 dans Producer est vide après la suppression du préfixe.");
       }
   } else {
-      console.log("[PDF Extract] Producer field does not match prefix or is null/undefined.");
+      console.log("[PDF Extract] Le champ Producer ne correspond pas au préfixe ou est null/undefined.");
   }
   
-  // Fallback to Keywords (for compatibility with a previous brief version)
+  // Fallback to Keywords (for compatibility with a previous brief version, less likely to be the source now)
   const keywordsString = pdfDoc.getKeywords();
-  console.log("[PDF Extract] Keywords field raw value:", keywordsString);
+  console.log("[PDF Extract] Valeur brute du champ Keywords (fallback):", keywordsString);
   if (keywordsString) {
-      const keywords = keywordsString.split(', '); 
+      const keywords = keywordsString.split(',').map(kw => kw.trim()); // Trim spaces
       const hiddenMessageKeyword = keywords.find(kw => kw.startsWith(PDF_CUSTOM_METADATA_KEY + ":"));
       if (hiddenMessageKeyword) {
-          console.log("[PDF Extract] Found matching keyword in Keywords (fallback):", hiddenMessageKeyword);
-          const base64Fallback = hiddenMessageKeyword.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
-          console.log("[PDF Extract] Extracted Base64 from Keywords:", base64Fallback);
-          if (base64Fallback) {
+          console.log("[PDF Extract] Mot-clé correspondant trouvé dans Keywords (fallback):", hiddenMessageKeyword);
+          const prefixLength = (PDF_CUSTOM_METADATA_KEY + ":").length;
+          const base64Fallback = hiddenMessageKeyword.substring(prefixLength);
+          console.log("[PDF Extract] Base64 extrait de Keywords:", `"${base64Fallback}"`);
+          if (base64Fallback && base64Fallback.trim().length > 0) {
               const decodedBytes = base64ToUint8Array(base64Fallback);
-              console.log("[PDF Extract] Decoded bytes length from Keywords:", decodedBytes.length);
+              console.log("[PDF Extract] Octets décodés de Keywords (longueur):", decodedBytes.length);
               const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes);
-              console.log("[PDF Extract] Decoded text from Keywords:", extractedText);
+              console.log("[PDF Extract] Texte décodé de Keywords:", `"${extractedText}"`);
               return extractedText;
           } else {
-               console.log("[PDF Extract] Base64 part in Keywords is empty after prefix removal.");
+               console.log("[PDF Extract] La partie Base64 dans Keywords est vide après la suppression du préfixe.");
           }
       }
   }
 
-  console.log("[PDF Extract] Message non trouvé dans les métadonnées Producer ou Keywords avec la clé attendue.");
-  return ""; // Message genuinely not found
+  console.log("[PDF Extract] Message non trouvé dans les métadonnées Producer ou Keywords avec la clé attendue. Retour d'une chaîne vide.");
+  return ""; // Message genuinely not found or an issue occurred before returning actual text
 }
 
 
@@ -164,3 +167,4 @@ export async function convertObjectUrlToDataUri(objectUrl: string): Promise<stri
     reader.readAsDataURL(blob);
   });
 }
+

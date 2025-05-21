@@ -37,7 +37,7 @@ interface AlgorithmActionsCardProps {
   isTextTool?: boolean;
   onCopyStegoText?: () => void;
   isCopyStegoTextPossible?: boolean;
-  stegoText?: string | null; // Added to display stego text for text tool
+  stegoText?: string | null; 
 }
 
 export default function AlgorithmActionsCard({
@@ -61,7 +61,7 @@ export default function AlgorithmActionsCard({
   isTextTool = false,
   onCopyStegoText,
   isCopyStegoTextPossible,
-  stegoText, // Added prop
+  stegoText, 
 }: AlgorithmActionsCardProps) {
   const selectedAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithmId);
 
@@ -105,7 +105,7 @@ export default function AlgorithmActionsCard({
         </div>
 
         {operationMode === 'embed' && (
-          <div className="space-y-4"> {/* Changed to space-y-4 for better spacing with new textarea */}
+          <div className="space-y-4"> 
             <Button
               onClick={onEmbed}
               disabled={!isEmbedPossible || isProcessing}
@@ -139,7 +139,7 @@ export default function AlgorithmActionsCard({
                     onClick={onCopyStegoText}
                     disabled={!isCopyStegoTextPossible || isProcessing}
                     variant="outline"
-                    size="lg" // Maintained lg for consistency, can be sm if preferred
+                    size="lg" 
                     className="w-full text-base"
                     aria-label="Copier le texte stéganographié"
                 >
@@ -189,8 +189,12 @@ export default function AlgorithmActionsCard({
                 className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[100px] text-sm text-foreground whitespace-pre-wrap break-all"
                 aria-label="Message extrait"
               >
-                {extractedMessage !== null && extractedMessage.length > 0 ? extractedMessage : 
-                 (isProcessing ? "Extraction en cours..." : "Le message extrait apparaîtra ici...")}
+                {isProcessing 
+                  ? "Extraction en cours..." 
+                  : (extractedMessage && extractedMessage.length > 0 
+                      ? extractedMessage 
+                      : "Le message extrait apparaîtra ici...")
+                }
               </div>
               <Button
                 onClick={onCopyExtractedMessage}
@@ -211,7 +215,7 @@ export default function AlgorithmActionsCard({
             statusMessage.type === 'success' ? 'text-green-600 dark:text-green-400' :
             statusMessage.type === 'error' ? 'text-red-600 dark:text-red-400' :
             'text-blue-600 dark:text-blue-400' 
-          } pt-2`}> {/* Added pt-2 for spacing */}
+          } pt-2`}>
             {statusMessage.type === 'success' && <ShieldCheck className="inline mr-1 h-4 w-4" />}
             {statusMessage.text}
           </p>
