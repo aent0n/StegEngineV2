@@ -1,5 +1,5 @@
-// File overview: Defines core TypeScript types and interfaces used throughout the application,
-// including steganography algorithm definitions, tool state, and file type options.
+// Résumé du fichier : Définit les types et interfaces TypeScript principaux utilisés dans l'application,
+// y compris les définitions d'algorithmes de stéganographie, l'état des outils et les options de type de fichier.
 
 import type { AlgorithmAdvisorOutput } from "@/ai/flows/algorithm-advisor";
 
@@ -70,7 +70,7 @@ export const lsbPngAlgorithm: SteganographyAlgorithm = {
 
 export const pngMetadataTextAlgorithm: SteganographyAlgorithm = {
   id: 'png_metadata_text',
-  name: 'Métadonnées PNG (tEXt Chunk)',
+  name: 'Métadonnées PNG (Chunk tEXt)',
   description: 'Cache le message dans un chunk tEXt (commentaire personnalisé) d\'un fichier PNG. N\'altère pas les pixels.',
   supportedFileTypes: ['image/png'],
   isMetadataBased: true,
@@ -87,7 +87,7 @@ export const lsbAudioWavAlgorithm: SteganographyAlgorithm = {
 export const wavMetadataCommentAlgorithm: SteganographyAlgorithm = {
   id: 'wav_metadata_comment',
   name: 'Métadonnées WAV (Commentaire INFO)',
-  description: 'Cache le message dans le champ commentaire (ICMT) de l\'en-tête INFO d\'un fichier WAV. Moins robuste mais n\'altère pas l\'audio.',
+  description: 'Cache le message dans le champ commentaire (ICMT) de l\'en-tête INFO d\'un fichier WAV.',
   supportedFileTypes: ['audio/wav', 'audio/wave', 'audio/x-wav'],
   isMetadataBased: true,
   estimatedCapacity: 1024, 

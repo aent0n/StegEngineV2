@@ -1,9 +1,9 @@
-// File overview: Provides functions for image steganography, specifically for PNG files.
-// Includes LSB (Least Significant Bit) and metadata-based (tEXt chunk) methods.
+// Résumé du fichier : Fournit des fonctions pour la stéganographie d'image, spécifiquement pour les fichiers PNG.
+// Inclut les méthodes LSB (Bit de Poids Faible) et basées sur les métadonnées (chunk tEXt).
 
 import type { CapacityInfo } from '@/types';
 
-// --- UTF-8 Helpers ---
+// --- Fonctions utilitaires UTF-8 ---
 function utf8Encode(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
@@ -17,7 +17,7 @@ function utf8Decode(bytes: Uint8Array): string {
   }
 }
 
-// --- LSB Specific Helpers ---
+// --- Fonctions utilitaires spécifiques à LSB ---
 function textToBinaryLSB(text: string): string {
   const bytes = utf8Encode(text);
   let binaryString = "";
@@ -84,12 +84,12 @@ function calculateLsbCapacity(imageData: ImageData): number {
   return Math.floor(bitsForPayload / 8); 
 }
 
-// --- PNG Chunk Constants & Helpers ---
+// --- Constantes et fonctions utilitaires pour les Chunks PNG ---
 const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; 
 const PNG_METADATA_KEYWORD = "StegEngineMessage";
 
-// Standard CRC32 checksum function
+// Fonction standard de somme de contrôle CRC32
 function crc32(bytes: Uint8Array, start: number = 0, length: number = bytes.length - start): number {
     let crc = 0xFFFFFFFF;
     const crcTable = crc32.table || (crc32.table = (() => {
@@ -112,7 +112,7 @@ function crc32(bytes: Uint8Array, start: number = 0, length: number = bytes.leng
 crc32.table = null as unknown as Uint32Array; 
 
 
-// --- Public Steganography Functions ---
+// --- Fonctions Publiques de Stéganographie ---
 
 export async function getCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
   if (file.type !== 'image/png') {
@@ -124,7 +124,7 @@ export async function getCapacityInfo(file: File, algorithmId: string): Promise<
     try { 
         const img = new Image();
         const url = URL.createObjectURL(file);
-        await new Promise<void>((resolve, reject) => { // Added <void> for clarity
+        await new Promise<void>((resolve, reject) => { 
             img.onload = () => resolve();
             img.onerror = () => reject(new Error("Image load failed for dimensions"));
             img.src = url;
@@ -132,7 +132,7 @@ export async function getCapacityInfo(file: File, algorithmId: string): Promise<
         width = img.width;
         height = img.height;
         URL.revokeObjectURL(url);
-    } catch (e) { /* ignore, dimensions are optional for estimate */ }
+    } catch (e) { /* ignorer, les dimensions sont optionnelles pour l'estimation */ }
     return { capacityBytes: METADATA_CAPACITY_ESTIMATE_BYTES, width, height, isEstimate: true };
   } else if (algorithmId === 'lsb_image_png') {
     const imageData = await getImageData(file);
@@ -165,7 +165,7 @@ export async function extractMessageFromImage(file: File, algorithmId: string): 
   throw new Error(`Algorithme d'extraction d'image non supporté: ${algorithmId}`);
 }
 
-// --- LSB PNG Implementation ---
+// --- Implémentation LSB PNG ---
 async function embedMessageInLsbPng(file: File, message: string): Promise<string> {
   const imageData = await getImageData(file);
   const capacityBytes = calculateLsbCapacity(imageData);
@@ -269,7 +269,7 @@ async function extractMessageFromLsbPng(file: File): Promise<string> {
 }
 
 
-// --- PNG Metadata (tEXt Chunk) Implementation ---
+// --- Implémentation des Métadonnées PNG (Chunk tEXt) ---
 async function embedMessageInPngMetadata(file: File, message: string): Promise<string> {
   const buffer = await file.arrayBuffer();
   const originalBytes = new Uint8Array(buffer);

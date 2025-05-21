@@ -1,5 +1,5 @@
-// File overview: Custom React hook for managing and displaying toast notifications.
-// Inspired by react-hot-toast library. Provides `toast` function and manages toast state.
+// Résumé du fichier : Hook React personnalisé pour gérer et afficher les notifications toast.
+// Inspiré par la bibliothèque react-hot-toast. Fournit la fonction `toast` et gère l'état des toasts.
 "use client"
 
 import * as React from "react"

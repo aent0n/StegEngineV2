@@ -1,15 +1,15 @@
-// File overview: Provides functions for audio steganography,
-// including LSB and metadata-based methods for WAV files.
+// Résumé du fichier : Fournit des fonctions pour la stéganographie audio,
+// incluant les méthodes LSB et basées sur les métadonnées pour les fichiers WAV.
 
 import type { CapacityInfo } from '@/types';
 
 const MESSAGE_LENGTH_BYTES_METADATA = 4; 
 const METADATA_CAPACITY_ESTIMATE_BYTES = 2048; 
 
-// LSB Specific Constants
+// Constantes spécifiques à LSB
 const MESSAGE_LENGTH_BITS_LSB = 32; 
 
-// UTF-8 Helpers
+// Fonctions utilitaires UTF-8
 function utf8Encode(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
@@ -49,7 +49,7 @@ function numberToBinary(num: number, bits: number): string {
   return '0'.repeat(Math.max(0, bits - binary.length)) + binary;
 }
 
-// WAV Chunk Helpers
+// Fonctions utilitaires pour les chunks WAV
 interface WavChunk {
   id: string;
   size: number;
@@ -66,7 +66,7 @@ function findChunk(view: DataView, chunkIdToFind: string, startOffset: number = 
       return { id, size, offset, dataOffset: offset + 8 };
     }
     offset += 8 + size;
-    if (size % 2 !== 0) offset++; // Pad byte
+    if (size % 2 !== 0) offset++; // Octet de remplissage
   }
   return null;
 }
@@ -107,8 +107,7 @@ function findSubChunk(view: DataView, parentChunkDataOffset: number, parentChunk
   return null;
 }
 
-
-// WAV Header Interface and Parser
+// Interface et analyseur d'en-tête WAV
 interface WavHeader {
   riffId: string;
   fileSize: number;
@@ -130,7 +129,7 @@ interface WavHeader {
 function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
   const view = new DataView(buffer);
   if (view.byteLength < 44) {
-      console.error("File too small to be a valid WAV file");
+      console.error("Fichier trop petit pour être un fichier WAV valide");
       return null;
   }
 
@@ -139,17 +138,17 @@ function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
 
   header.riffId = String.fromCharCode(view.getUint8(offset++), view.getUint8(offset++), view.getUint8(offset++), view.getUint8(offset++));
   if (header.riffId !== 'RIFF') {
-    console.error("Not a RIFF file"); return null;
+    console.error("Pas un fichier RIFF"); return null;
   }
   header.fileSize = view.getUint32(offset, true); offset += 4;
   header.waveId = String.fromCharCode(view.getUint8(offset++), view.getUint8(offset++), view.getUint8(offset++), view.getUint8(offset++));
   if (header.waveId !== 'WAVE') {
-    console.error("Not a WAVE file"); return null;
+    console.error("Pas un fichier WAVE"); return null;
   }
 
   const fmtChunk = findChunk(view, 'fmt ', offset);
   if (!fmtChunk) {
-    console.error("WAV 'fmt ' chunk not found."); return null;
+    console.error("Chunk 'fmt ' WAV non trouvé."); return null;
   }
   header.fmtId = fmtChunk.id;
   header.fmtSize = fmtChunk.size;
@@ -168,7 +167,7 @@ function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
 
   const dataChunk = findChunk(view, 'data', 12); 
   if (!dataChunk) {
-    console.error("WAV 'data' chunk not found."); return null;
+    console.error("Chunk 'data' WAV non trouvé."); return null;
   }
   header.dataId = dataChunk.id;
   header.dataSize = dataChunk.size;
@@ -178,7 +177,7 @@ function parseWavHeader(buffer: ArrayBuffer): WavHeader | null {
   return header as WavHeader;
 }
 
-// Capacity Info
+// Informations de capacité
 export async function getAudioCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
   const buffer = await file.arrayBuffer();
   const header = parseWavHeader(buffer);
@@ -204,7 +203,7 @@ export async function getAudioCapacityInfo(file: File, algorithmId: string): Pro
   throw new Error("Algorithme audio non reconnu pour le calcul de capacité.");
 }
 
-// LSB Audio Steganography
+// Stéganographie Audio LSB
 export async function embedMessageInLSBAudio(file: File, message: string): Promise<string> {
   const buffer = await file.arrayBuffer();
   const header = parseWavHeader(buffer);
@@ -280,7 +279,7 @@ export async function extractMessageFromLSBAudio(file: File): Promise<string> {
 }
 
 
-// WAV Metadata (INFO Comment) Steganography
+// Stéganographie par Métadonnées WAV (INFO Commentaire)
 function createIcmtChunk(message: string): Uint8Array {
   const messageBytes = utf8Encode(message);
   const payloadLength = messageBytes.length;
@@ -431,7 +430,7 @@ export async function extractMessageFromWavMetadata(file: File): Promise<string>
 }
 
 
-// Generic Export/Conversion
+// Export/Conversion générique
 export async function convertObjectUrlToDataUri(objectUrl: string): Promise<string> {
   const response = await fetch(objectUrl);
   if (!response.ok) throw new Error(`Erreur HTTP lors de la récupération de l'Object URL: ${response.status} ${response.statusText}`);
@@ -450,7 +449,7 @@ export async function convertObjectUrlToDataUri(objectUrl: string): Promise<stri
   });
 }
 
-// Dispatcher function for embedding
+// Fonction de dispatch pour l'intégration
 export async function embedMessageInAudio(file: File, message: string, algorithmId: string): Promise<string> {
   if (algorithmId === 'lsb_audio_wav') {
     return embedMessageInLSBAudio(file, message);
@@ -460,7 +459,7 @@ export async function embedMessageInAudio(file: File, message: string, algorithm
   throw new Error(`Algorithme audio d'intégration non supporté: ${algorithmId}`);
 }
 
-// Dispatcher function for extraction
+// Fonction de dispatch pour l'extraction
 export async function extractMessageFromAudio(file: File, algorithmId: string): Promise<string> {
   if (algorithmId === 'lsb_audio_wav') {
     return extractMessageFromLSBAudio(file);

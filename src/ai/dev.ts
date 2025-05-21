@@ -1,5 +1,5 @@
-// File overview: Development-only Genkit configuration and flow imports.
-// Used for local Genkit development server.
+// Résumé du fichier : Configuration et importations de flux Genkit pour le développement uniquement.
+// Utilisé pour le serveur de développement local Genkit.
 
 import { config } from 'dotenv';
 config();

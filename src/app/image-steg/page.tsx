@@ -1,11 +1,11 @@
-// File overview: Page component for the Image Steganography tool.
-// Allows users to embed and extract messages in PNG images using LSB or metadata techniques.
+// Résumé du fichier : Composant de page pour l'outil de Stéganographie d'Image.
+// Permet aux utilisateurs d'intégrer et d'extraire des messages dans des images PNG en utilisant les techniques LSB ou de métadonnées.
 "use client";
 
 import type React from 'react';
 import { useState, useEffect } from "react";
-import FileUploadCard from "@/components/hideaway/FileUploadCard";
-import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
+import FileUploadCard from "@/components/StegEngine/FileUploadCard";
+import AlgorithmActionsCard from "@/components/StegEngine/AlgorithmActionsCard";
 import type { StegToolState, OperationMode, SteganographyAlgorithm, CapacityInfo, ExtractedMessageDetail } from "@/types";
 import { lsbPngAlgorithm, pngMetadataTextAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";

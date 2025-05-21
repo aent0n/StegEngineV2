@@ -2,12 +2,12 @@
 'use server';
 
 /**
- * @fileOverview An AI agent that suggests the best steganography algorithm
- * for a given file type and message, chosen from a list of available algorithms.
+ * @fileOverview Un agent IA qui suggère le meilleur algorithme de stéganographie
+ * pour un type de fichier et un message donnés, choisi parmi une liste d'algorithmes disponibles.
  *
- * - suggestAlgorithm - A function that suggests the optimal steganography algorithm.
- * - AlgorithmAdvisorInput - The input type for the suggestAlgorithm function.
- * - AlgorithmAdvisorOutput - The return type for the suggestAlgorithm function.
+ * - suggestAlgorithm - Une fonction qui suggère l'algorithme de stéganographie optimal.
+ * - AlgorithmAdvisorInput - Le type d'entrée pour la fonction suggestAlgorithm.
+ * - AlgorithmAdvisorOutput - Le type de retour pour la fonction suggestAlgorithm.
  */
 
 import {ai} from '@/ai/genkit';

@@ -1,4 +1,4 @@
-// File overview: Initializes and configures the global Genkit AI instance for the application.
+// Résumé du fichier : Initialise et configure l'instance globale Genkit AI pour l'application.
 
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';

@@ -1,11 +1,11 @@
-// File overview: Page component for the Text Steganography tool.
-// Allows users to embed and extract messages in plain text using whitespace or zero-width character techniques.
+// Résumé du fichier : Composant de page pour l'outil de Stéganographie de Texte.
+// Permet aux utilisateurs d'intégrer et d'extraire des messages dans du texte brut en utilisant des techniques d'espaces blancs ou de caractères à largeur nulle.
 "use client";
 
 import type React from 'react';
 import { useState, useEffect, useCallback } from "react";
-import TextInteractionCard from "@/components/hideaway/TextInteractionCard";
-import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
+import TextInteractionCard from "@/components/StegEngine/TextInteractionCard";
+import AlgorithmActionsCard from "@/components/StegEngine/AlgorithmActionsCard";
 import type { StegToolState, OperationMode, SteganographyAlgorithm, ExtractedMessageDetail } from "@/types";
 import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";

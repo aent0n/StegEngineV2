@@ -1,16 +1,16 @@
-// File overview: Provides functions for text steganography.
-// Includes methods like whitespace steganography and zero-width character (ZWC) steganography.
+// Résumé du fichier : Fournit des fonctions pour la stéganographie de texte.
+// Inclut des méthodes comme la stéganographie par espaces blancs et par caractères de largeur nulle (ZWC).
 
 import type { CapacityInfo } from '@/types';
 import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from '@/types';
 
 const MESSAGE_LENGTH_BITS_TEXT = 32; 
 
-// ZWC Constants
+// Constantes ZWC
 const ZW_SPACE = '\u200B'; 
 const ZW_NON_JOINER = '\u200C'; 
 
-// --- UTF-8 Helpers ---
+// --- Fonctions utilitaires UTF-8 ---
 function utf8Encode(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
@@ -54,7 +54,7 @@ function numberToBinary(num: number, bits: number): string {
 }
 
 
-// --- Whitespace Algorithm Specific Functions ---
+// --- Fonctions spécifiques à l'algorithme des Espaces Blancs ---
 async function getTextCapacityInfoWhitespace(coverText: string): Promise<CapacityInfo> {
   const lines = coverText.split('\n');
   const numLines = lines.length;
@@ -79,7 +79,7 @@ async function embedMessageInTextWhitespace(coverText: string, message: string):
 
   const { capacityBytes: maxCapacityBytes } = await getTextCapacityInfoWhitespace(coverText);
   if (Math.ceil(messageLengthInBits / 8) > maxCapacityBytes) {
-    throw new Error(`Message trop long (${Math.ceil(messageLengthInBits / 8)} octets). Capacité max (whitespace): ${maxCapacityBytes} octets.`);
+    throw new Error(`Message trop long (${Math.ceil(messageLengthInBits / 8)} octets). Capacité max (espaces blancs): ${maxCapacityBytes} octets.`);
   }
 
   const lengthBinary = numberToBinary(messageLengthInBits, MESSAGE_LENGTH_BITS_TEXT);
@@ -89,7 +89,7 @@ async function embedMessageInTextWhitespace(coverText: string, message: string):
   const stegoLines: string[] = [];
 
   if (coverLines.length < dataToEmbedBinary.length) {
-      throw new Error("Capacité du texte porteur (whitespace) insuffisante pour cacher le message et sa longueur.");
+      throw new Error("Capacité du texte porteur (espaces blancs) insuffisante pour cacher le message et sa longueur.");
   }
 
   for (let i = 0; i < coverLines.length; i++) {
@@ -105,11 +105,11 @@ async function embedMessageInTextWhitespace(coverText: string, message: string):
 }
 
 async function extractMessageFromTextWhitespace(stegoText: string): Promise<string> {
-  if (!stegoText) throw new Error("Le texte stéganographié (whitespace) ne peut pas être vide.");
+  if (!stegoText) throw new Error("Le texte stéganographié (espaces blancs) ne peut pas être vide.");
   
   const stegoLines = stegoText.split('\n');
   if (stegoLines.length < MESSAGE_LENGTH_BITS_TEXT) {
-    throw new Error("Texte (whitespace) trop court pour contenir une longueur de message valide.");
+    throw new Error("Texte (espaces blancs) trop court pour contenir une longueur de message valide.");
   }
 
   let extractedLengthBits = '';
@@ -117,29 +117,29 @@ async function extractMessageFromTextWhitespace(stegoText: string): Promise<stri
     const line = stegoLines[i];
     if (line.endsWith('  ')) extractedLengthBits += '1';
     else if (line.endsWith(' ')) extractedLengthBits += '0';
-    else throw new Error(`Format (whitespace) invalide ligne ${i + 1} (longueur). Attendu un ou deux espaces.`);
+    else throw new Error(`Format (espaces blancs) invalide ligne ${i + 1} (longueur). Attendu un ou deux espaces.`);
   }
   
   const messageLengthInBits = parseInt(extractedLengthBits, 2);
-  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) throw new Error("Longueur de message (whitespace) invalide.");
+  if (isNaN(messageLengthInBits) || messageLengthInBits < 0) throw new Error("Longueur de message (espaces blancs) invalide.");
   if (messageLengthInBits === 0) return "";
 
   const totalBitsToExtract = MESSAGE_LENGTH_BITS_TEXT + messageLengthInBits;
-  if (stegoLines.length < totalBitsToExtract) throw new Error("Texte (whitespace) trop court pour le message annoncé.");
+  if (stegoLines.length < totalBitsToExtract) throw new Error("Texte (espaces blancs) trop court pour le message annoncé.");
 
   let extractedMessageBits = '';
   for (let i = MESSAGE_LENGTH_BITS_TEXT; i < totalBitsToExtract; i++) {
     const line = stegoLines[i];
     if (line.endsWith('  ')) extractedMessageBits += '1';
     else if (line.endsWith(' ')) extractedMessageBits += '0';
-    else throw new Error(`Format (whitespace) invalide ligne ${i + 1} (message). Attendu un ou deux espaces.`);
+    else throw new Error(`Format (espaces blancs) invalide ligne ${i + 1} (message). Attendu un ou deux espaces.`);
   }
 
-  if (extractedMessageBits.length !== messageLengthInBits) throw new Error("N'a pas pu extraire le message (whitespace) complet.");
+  if (extractedMessageBits.length !== messageLengthInBits) throw new Error("N'a pas pu extraire le message (espaces blancs) complet.");
   return binaryToText(extractedMessageBits);
 }
 
-// --- Zero-Width Characters (ZWC) Algorithm Specific Functions ---
+// --- Fonctions spécifiques à l'algorithme des Caractères de Largeur Nulle (ZWC) ---
 async function getTextCapacityInfoZWC(coverText: string): Promise<CapacityInfo> {
   const cleanCoverText = coverText.replace(new RegExp(`[${ZW_SPACE}${ZW_NON_JOINER}]`, 'g'), '');
   const availableBitsForPayload = cleanCoverText.length - MESSAGE_LENGTH_BITS_TEXT;
@@ -236,7 +236,7 @@ async function extractMessageFromTextZWC(stegoText: string): Promise<string> {
 }
 
 
-// --- Main Dispatcher Functions ---
+// --- Fonctions principales de Dispatch ---
 export async function getTextCapacityInfo(coverText: string, algorithmId: string): Promise<CapacityInfo> {
   if (algorithmId === whitespaceTextAlgorithm.id) {
     return getTextCapacityInfoWhitespace(coverText);

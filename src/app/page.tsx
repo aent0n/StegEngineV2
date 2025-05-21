@@ -1,12 +1,12 @@
-// File overview: The main landing page for the Steg'Engine application.
-// Displays a hero section, an AI algorithm advisor, a grid of steganography tools,
-// and a "Why Choose Us" section.
+// Résumé du fichier : Page d'accueil principale de l'application Steg'Engine.
+// Affiche une section "hero", un conseiller d'algorithme IA, une grille d'outils de stéganographie,
+// et une section "Pourquoi nous choisir".
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import WhyChooseUsSection from "@/components/hideaway/WhyChooseUsSection";
-import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
+import WhyChooseUsSection from "@/components/StegEngine/WhyChooseUsSection";
+import AlgorithmAdvisorCard from "@/components/StegEngine/AlgorithmAdvisorCard";
 import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,8 @@ const tools = [
 
 export default function HomePage() {
   const handleAiSuggestionHomepage = (suggestion: AlgorithmAdvisorOutput) => {
-    console.log("AI Suggestion on homepage:", suggestion);
+    // Handler minimal pour la page d'accueil, le conseiller affiche déjà le résultat.
+    console.log("Suggestion IA sur la page d'accueil:", suggestion);
   };
 
   return (

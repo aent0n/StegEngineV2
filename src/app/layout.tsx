@@ -1,13 +1,13 @@
-// File overview: Defines the root layout for the application, including HTML structure,
-// theme management (light/dark mode), global styles, header, footer, and toaster.
+// Résumé du fichier : Définit la mise en page racine de l'application, incluant la structure HTML,
+// la gestion du thème (clair/sombre), les styles globaux, l'en-tête, le pied de page et le toaster.
 "use client";
 
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import AppHeader from '@/components/hideaway/AppHeader';
-import AppFooter from '@/components/hideaway/AppFooter';
+import AppHeader from '@/components/StegEngine/AppHeader';
+import AppFooter from '@/components/StegEngine/AppFooter';
 import { cn } from '@/lib/utils';
 import React, { useState, useEffect, useCallback } from 'react';
 

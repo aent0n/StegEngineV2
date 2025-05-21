@@ -1,11 +1,11 @@
-// File overview: Page component for the PDF Steganography tool.
-// Allows users to embed and extract messages in PDF metadata (Subject field).
+// Résumé du fichier : Composant de page pour l'outil de Stéganographie PDF.
+// Permet aux utilisateurs d'intégrer et d'extraire des messages dans les métadonnées PDF (champ Sujet).
 "use client";
 
 import type React from 'react';
 import { useState, useEffect } from "react";
-import FileUploadCard from "@/components/hideaway/FileUploadCard";
-import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
+import FileUploadCard from "@/components/StegEngine/FileUploadCard";
+import AlgorithmActionsCard from "@/components/StegEngine/AlgorithmActionsCard";
 import type { StegToolState, OperationMode, SteganographyAlgorithm, CapacityInfo, ExtractedMessageDetail } from "@/types";
 import { pdfMetadataAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";

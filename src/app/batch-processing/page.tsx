@@ -1,5 +1,5 @@
-// File overview: Page component for the Batch Processing tool.
-// Allows users to process multiple files for steganography operations (embedding or extracting messages).
+// Résumé du fichier : Composant de page pour l'outil de Traitement par Lots.
+// Permet aux utilisateurs de traiter plusieurs fichiers pour des opérations de stéganographie (intégration ou extraction de messages).
 "use client";
 
 import type React from 'react';
