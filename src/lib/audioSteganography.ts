@@ -361,7 +361,7 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
       const oldInfoDataStart = existingInfoListChunk.dataOffset;
       const oldInfoDataSize = existingInfoListChunk.size - 4; // -4 for 'INFO' type
       let tempBuffer = new ArrayBuffer(oldInfoDataSize);
-      let tempView = new DataView(tempBuffer);
+      // let tempView = new DataView(tempBuffer); // This tempView is not used
       let tempOffset = 0;
 
       let currentSubChunkOffset = oldInfoDataStart;
@@ -388,7 +388,7 @@ export async function embedMessageInWavMetadata(file: File, message: string): Pr
   }
 
   const infoListChunkSize = 4 + infoSubChunksData.length; // 4 for 'INFO' type + data
-  const paddedInfoListChunkSize = infoListChunkSize + (infoListChunkSize % 2); // LIST chunk total size (incl. 'INFO' type) needs to be even IF its data part is odd
+  // const paddedInfoListChunkSize = infoListChunkSize + (infoListChunkSize % 2); // LIST chunk total size (incl. 'INFO' type) needs to be even IF its data part is odd // Not used
 
   const listChunkHeader = new Uint8Array(12);
   const listView = new DataView(listChunkHeader.buffer);
@@ -467,4 +467,25 @@ export async function convertObjectUrlToDataUri(objectUrl: string): Promise<stri
     reader.onerror = (error) => reject(new Error(`Erreur FileReader: ${error}`));
     reader.readAsDataURL(blob);
   });
+}
+
+// --- Dispatcher function for embedding ---
+export async function embedMessageInAudio(file: File, message: string, algorithmId: string): Promise<string> {
+  if (algorithmId === 'lsb_audio_wav') {
+    return embedMessageInLSBAudio(file, message);
+  } else if (algorithmId === 'wav_metadata_comment') {
+    return embedMessageInWavMetadata(file, message);
+  }
+  throw new Error(`Algorithme audio d'intégration non supporté: ${algorithmId}`);
+}
+
+// --- Dispatcher function for extraction (optional, but good for consistency) ---
+// Not strictly needed by batch processing yet as it only embeds, but good for future use.
+export async function extractMessageFromAudio(file: File, algorithmId: string): Promise<string> {
+  if (algorithmId === 'lsb_audio_wav') {
+    return extractMessageFromLSBAudio(file);
+  } else if (algorithmId === 'wav_metadata_comment') {
+    return extractMessageFromWavMetadata(file);
+  }
+  throw new Error(`Algorithme audio d'extraction non supporté: ${algorithmId}`);
 }
