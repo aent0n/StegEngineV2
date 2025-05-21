@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,31 +11,69 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { mockAlgorithms, type SteganographyAlgorithm } from "@/types";
-import { Upload, Settings, Play, Loader2, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Upload, Settings, Play, Loader2, CheckCircle, XCircle, FileText, ImageIcon, MusicIcon, FileQuestionIcon, AlertTriangle } from "lucide-react";
 
 interface BatchFile {
   file: File;
   id: string;
-  status: 'pending' | 'processing' | 'success' | 'error';
+  status: 'pending' | 'processing' | 'success' | 'error' | 'incompatible';
   resultMessage?: string;
 }
+
+const getFileIcon = (fileType: string) => {
+  if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-primary" />;
+  if (fileType.startsWith('audio/')) return <MusicIcon className="h-5 w-5 text-primary" />;
+  if (fileType === 'application/pdf') return <FileQuestionIcon className="h-5 w-5 text-primary" />;
+  if (fileType.startsWith('text/')) return <FileText className="h-5 w-5 text-primary" />;
+  return <FileText className="h-5 w-5 text-muted-foreground" />;
+};
 
 export default function BatchProcessingPage() {
   const [selectedFiles, setSelectedFiles] = useState<BatchFile[]>([]);
   const [selectedAlgorithmId, setSelectedAlgorithmId] = useState<string | null>(null);
-  const [messageToEmbed, setMessageToEmbed] = useState<string>(""); // For embed mode
+  const [messageToEmbed, setMessageToEmbed] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const { toast } = useToast();
+
+  const selectedAlgorithmDetails = useMemo(() => {
+    return mockAlgorithms.find(algo => algo.id === selectedAlgorithmId) || null;
+  }, [selectedAlgorithmId]);
+
+  const acceptedFileTypes = useMemo(() => {
+    if (selectedAlgorithmDetails) {
+      return selectedAlgorithmDetails.supportedFileTypes.join(',');
+    }
+    // If no algorithm selected, accept all types from all mock algorithms
+    const allTypes = new Set<string>();
+    mockAlgorithms.forEach(algo => algo.supportedFileTypes.forEach(type => allTypes.add(type)));
+    return Array.from(allTypes).join(',');
+  }, [selectedAlgorithmDetails]);
+
+  const supportedFileTypesMessage = useMemo(() => {
+    if (selectedAlgorithmDetails) {
+      return `Types de fichiers acceptés pour ${selectedAlgorithmDetails.name}: ${selectedAlgorithmDetails.supportedFileTypes.join(', ')}`;
+    }
+    return "Sélectionnez un algorithme pour filtrer les types de fichiers, ou téléchargez des fichiers compatibles.";
+  }, [selectedAlgorithmDetails]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const newFiles: BatchFile[] = Array.from(event.target.files).map(file => ({
         file,
-        id: `${file.name}-${file.lastModified}-${file.size}`, // Basic unique ID
+        id: `${file.name}-${file.lastModified}-${file.size}-${Math.random()}`, // Ensure more uniqueness
         status: 'pending',
       }));
-      setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
-      event.target.value = ""; // Reset file input
+      setSelectedFiles(prevFiles => {
+        const updatedFiles = [...prevFiles];
+        newFiles.forEach(nf => {
+          if (!updatedFiles.some(ef => ef.id === nf.id || (ef.file.name === nf.file.name && ef.file.lastModified === nf.file.lastModified && ef.file.size === nf.file.size) )) {
+            updatedFiles.push(nf);
+          }
+        });
+        return updatedFiles;
+      });
+      event.target.value = ""; 
     }
   };
 
@@ -45,6 +83,8 @@ export default function BatchProcessingPage() {
 
   const handleAlgorithmChange = (algorithmId: string) => {
     setSelectedAlgorithmId(algorithmId);
+    // Reset status of files if algorithm changes, as compatibility might change
+    setSelectedFiles(prev => prev.map(f => ({ ...f, status: 'pending', resultMessage: undefined })));
   };
 
   const handleMessageToEmbedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,41 +96,50 @@ export default function BatchProcessingPage() {
       toast({ variant: "destructive", title: "Aucun fichier", description: "Veuillez sélectionner des fichiers à traiter." });
       return;
     }
-    if (!selectedAlgorithmId) {
+    if (!selectedAlgorithmId || !selectedAlgorithmDetails) {
       toast({ variant: "destructive", title: "Aucun algorithme", description: "Veuillez sélectionner un algorithme." });
       return;
     }
-    // For embed mode, a message is required (even if it's empty for some metadata algos)
-    // For extract mode, message is not needed. Here we simplify and assume embed for now.
-    // A more complete solution would have an operationMode (embed/extract) selector.
     if (!messageToEmbed) {
-        toast({ variant: "destructive", title: "Message manquant", description: "Veuillez saisir un message à cacher pour le traitement par lots (mode intégration)." });
+        toast({ variant: "destructive", title: "Message manquant", description: "Veuillez saisir un message à cacher pour le traitement par lots." });
         return;
     }
 
     setIsProcessing(true);
-    setSelectedFiles(prev => prev.map(f => ({ ...f, status: 'processing', resultMessage: undefined })));
-    toast({ title: "Traitement par lots démarré", description: `Traitement de ${selectedFiles.length} fichiers...` });
+    
+    const filesToProcess = selectedFiles.map(batchFile => {
+      const isCompatible = selectedAlgorithmDetails.supportedFileTypes.includes(batchFile.file.type);
+      if (!isCompatible) {
+        return { 
+          ...batchFile, 
+          status: 'incompatible' as 'incompatible', // Correctly type 'incompatible'
+          resultMessage: `Type de fichier (${batchFile.file.type}) incompatible avec ${selectedAlgorithmDetails.name}.`
+        };
+      }
+      return { ...batchFile, status: 'processing' as 'processing', resultMessage: undefined };
+    });
+    setSelectedFiles(filesToProcess);
 
-    // Simulate processing for each file
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const currentFileId = selectedFiles[i].id;
+    toast({ title: "Traitement par lots démarré", description: `Traitement de ${filesToProcess.filter(f=> f.status === 'processing').length} fichiers compatibles...` });
+
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const currentFile = filesToProcess[i];
+      if (currentFile.status !== 'processing') continue; // Skip incompatible or already processed
+
       // Simulate API call or heavy processing
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
       
-      // Simulate success or failure
-      const isSuccess = Math.random() > 0.2; // 80% success rate
-      const algoName = mockAlgorithms.find(a => a.id === selectedAlgorithmId)?.name || "Algorithme inconnu";
+      const isSuccess = Math.random() > 0.2; 
 
       setSelectedFiles(prev =>
         prev.map(f =>
-          f.id === currentFileId
+          f.id === currentFile.id
             ? {
                 ...f,
                 status: isSuccess ? 'success' : 'error',
                 resultMessage: isSuccess 
-                  ? `Message intégré avec succès via ${algoName}.` 
-                  : `Échec de l'intégration via ${algoName}. (simulé)`,
+                  ? `Message intégré avec succès via ${selectedAlgorithmDetails.name}.` 
+                  : `Échec de l'intégration via ${selectedAlgorithmDetails.name}. (simulé)`,
               }
             : f
         )
@@ -98,11 +147,15 @@ export default function BatchProcessingPage() {
     }
 
     setIsProcessing(false);
-    toast({ title: "Traitement par lots terminé", description: "Vérifiez les résultats ci-dessous." });
-  };
+    const finalSuccessCount = selectedFiles.filter(f => f.status === 'success').length;
+    const finalErrorCount = selectedFiles.filter(f => f.status === 'error').length;
+    const finalIncompatibleCount = selectedFiles.filter(f => f.status === 'incompatible').length;
 
-  const selectedAlgorithmDetails = mockAlgorithms.find(algo => algo.id === selectedAlgorithmId);
-  const acceptedFileTypes = selectedAlgorithmDetails?.supportedFileTypes.join(',') || "*/*";
+    toast({ 
+      title: "Traitement par lots terminé", 
+      description: `${finalSuccessCount} succès, ${finalErrorCount} échecs, ${finalIncompatibleCount} incompatibles. Vérifiez les résultats.` 
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -126,7 +179,7 @@ export default function BatchProcessingPage() {
                 className="file:text-primary-foreground file:bg-primary hover:file:bg-primary/90 file:rounded-md file:border-0 file:px-3 file:py-2 file:mr-3 cursor-pointer"
                 disabled={isProcessing}
               />
-              {selectedAlgorithmDetails && <p className="text-sm text-muted-foreground mt-1">Types de fichiers acceptés pour {selectedAlgorithmDetails.name}: {selectedAlgorithmDetails.supportedFileTypes.join(', ')}</p>}
+              <p className="text-sm text-muted-foreground mt-1">{supportedFileTypesMessage}</p>
             </div>
 
             <div>
@@ -151,7 +204,7 @@ export default function BatchProcessingPage() {
             </div>
             
             <div>
-              <Label htmlFor="batchMessage" className="text-base">3. Message à Cacher (pour le mode intégration)</Label>
+              <Label htmlFor="batchMessage" className="text-base">3. Message à Cacher</Label>
               <Input
                 id="batchMessage"
                 type="text"
@@ -161,15 +214,15 @@ export default function BatchProcessingPage() {
                 disabled={isProcessing}
               />
                <p className="text-sm text-muted-foreground mt-1">
-                Ce message sera tenté d'être intégré dans tous les fichiers. L'extraction par lot n'est pas encore implémentée.
+                Ce message sera intégré dans les fichiers compatibles. Pour traiter du texte brut, sauvegardez-le en fichier .txt et téléchargez-le. L'extraction par lot n'est pas encore implémentée.
               </p>
             </div>
 
-            <Button onClick={handleStartBatch} disabled={isProcessing || selectedFiles.length === 0 || !selectedAlgorithmId} className="w-full" size="lg">
+            <Button onClick={handleStartBatch} disabled={isProcessing || selectedFiles.length === 0 || !selectedAlgorithmId || !messageToEmbed} className="w-full" size="lg">
               {isProcessing ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Traitement en cours...</>
               ) : (
-                <><Play className="mr-2 h-5 w-5" /> Démarrer le Traitement par Lots</>
+                <><Play className="mr-2 h-5 w-5" /> Démarrer le Traitement</>
               )}
             </Button>
           </CardContent>
@@ -178,26 +231,38 @@ export default function BatchProcessingPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FileText className="text-primary"/> Fichiers Sélectionnés et Résultats</CardTitle>
-            <CardDescription>Liste des fichiers en attente ou traités.</CardDescription>
+            <CardDescription>Liste des fichiers en attente, en traitement, ou traités.</CardDescription>
           </CardHeader>
           <CardContent>
             {selectedFiles.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">Aucun fichier sélectionné.</p>
+              <p className="text-muted-foreground text-center py-4">Aucun fichier sélectionné pour le moment.</p>
             ) : (
               <ScrollArea className="h-[400px] pr-4">
                 <ul className="space-y-3">
                   {selectedFiles.map((batchFile) => (
-                    <li key={batchFile.id} className="p-3 border rounded-md bg-secondary/20 flex justify-between items-center">
-                      <div className="truncate pr-2">
-                        <p className="font-medium text-sm truncate" title={batchFile.file.name}>{batchFile.file.name}</p>
-                        <p className="text-xs text-muted-foreground">{(batchFile.file.size / 1024).toFixed(2)} KB</p>
-                        {batchFile.resultMessage && <p className={`text-xs ${batchFile.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>{batchFile.resultMessage}</p>}
+                    <li key={batchFile.id} className="p-3 border rounded-md bg-secondary/20 flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {getFileIcon(batchFile.file.type)}
+                        <div className="truncate">
+                          <p className="font-medium text-sm truncate" title={batchFile.file.name}>{batchFile.file.name}</p>
+                          <p className="text-xs text-muted-foreground">{(batchFile.file.size / 1024).toFixed(2)} KB - {batchFile.file.type || "Type inconnu"}</p>
+                           {batchFile.resultMessage && (
+                            <p className={`text-xs truncate ${
+                                batchFile.status === 'success' ? 'text-green-600' : 
+                                batchFile.status === 'error' ? 'text-red-600' : 
+                                batchFile.status === 'incompatible' ? 'text-orange-600' : 'text-blue-600'
+                            }`} title={batchFile.resultMessage}>
+                                {batchFile.resultMessage}
+                            </p>
+                           )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {batchFile.status === 'pending' && <span className="text-xs text-muted-foreground">En attente</span>}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {batchFile.status === 'pending' && <span className="text-xs text-muted-foreground">Prêt</span>}
                         {batchFile.status === 'processing' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
                         {batchFile.status === 'success' && <CheckCircle className="h-5 w-5 text-green-500" />}
                         {batchFile.status === 'error' && <XCircle className="h-5 w-5 text-red-500" />}
+                        {batchFile.status === 'incompatible' && <AlertTriangle className="h-5 w-5 text-orange-500" />}
                         <Button variant="ghost" size="icon" onClick={() => removeFile(batchFile.id)} disabled={isProcessing} className="h-7 w-7">
                           <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                           <span className="sr-only">Retirer</span>
@@ -214,3 +279,5 @@ export default function BatchProcessingPage() {
     </div>
   );
 }
+
+    
