@@ -26,7 +26,6 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
   } catch (e) {
     console.error("[PDF Lib] Erreur de décodage Base64:", e);
-    // Re-throw the error so the calling UI can handle it (e.g., show error toast)
     throw new Error(`Le décodage Base64 a échoué: ${(e as Error).message}. Le message caché est peut-être corrompu ou absent.`);
   }
 }
@@ -48,31 +47,29 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
   if (algorithmId !== 'pdf_metadata_simulated') {
     throw new Error(`Algorithme d'intégration PDF non supporté: ${algorithmId}`);
   }
-
-  // Dynamically import pdf-lib
-  let PDFDocument: any;
-  try {
-    const pdfLib = await import('pdf-lib');
-    PDFDocument = pdfLib.PDFDocument;
-    if (!PDFDocument) throw new Error("PDFDocument non trouvé dans pdf-lib");
-  } catch (importError) {
-      console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé dynamiquement. Retour au comportement simulé pour l'intégration.", importError);
-      // Fallback to simulated behavior if pdf-lib is not available
-      const blob = new Blob([await file.arrayBuffer()], { type: 'application/pdf' });
-      return URL.createObjectURL(blob); // Return original file
-  }
+  console.log("[PDF Embed] Tentative d'intégration réelle.");
 
   try {
+    const { PDFDocument } = await import('pdf-lib');
+    if (!PDFDocument) {
+        console.error("[PDF Lib] PDFDocument n'a pas pu être importé de pdf-lib lors de l'intégration.");
+        throw new Error("Erreur interne: Composant PDFDocument non trouvé lors de l'intégration.");
+    }
+
     const pdfBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(pdfBuffer);
 
     const messageBytes = new TextEncoder().encode(message);
     const base64EncodedMessage = uint8ArrayToBase64(messageBytes);
     
-    pdfDoc.setCustomMetadata(PDF_CUSTOM_METADATA_KEY, base64EncodedMessage);
-    console.log(`[PDF Embed] Tentative de définition des métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' à:`, base64EncodedMessage);
-
-    // Save the PDF. { updateMetadata: false } might be less critical here but kept for good measure.
+    if (typeof pdfDoc.setCustomMetadata === 'function') {
+        pdfDoc.setCustomMetadata(PDF_CUSTOM_METADATA_KEY, base64EncodedMessage);
+        console.log(`[PDF Embed] Tentative de définition des métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' à:`, base64EncodedMessage);
+    } else {
+        console.warn("[PDF Lib] pdfDoc.setCustomMetadata n'est pas une fonction. Impossible de définir les métadonnées personnalisées.");
+        throw new Error("Impossible de définir les métadonnées personnalisées: fonction non disponible.");
+    }
+    
     const modifiedPdfBytes = await pdfDoc.save({ updateMetadata: false });
     const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
     return URL.createObjectURL(blob);
@@ -90,42 +87,54 @@ export async function extractMessageFromPdf(file: File, algorithmId: string): Pr
   }
   console.log("[PDF Extract] Tentative d'extraction réelle.");
 
-  let PDFDocument: any;
   try {
-    const pdfLib = await import('pdf-lib');
-    PDFDocument = pdfLib.PDFDocument;
-    if (!PDFDocument) throw new Error("PDFDocument non trouvé dans pdf-lib");
-  } catch (importError) {
-    console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé dynamiquement. Impossible d'effectuer une extraction réelle.", importError);
-    throw new Error("pdf-lib non chargé pour l'extraction. Assurez-vous qu'il est installé.");
+    const { PDFDocument } = await import('pdf-lib');
+    if (!PDFDocument) {
+        console.error("[PDF Extract] PDFDocument n'a pas pu être importé de pdf-lib lors de l'extraction.");
+        throw new Error("Erreur interne: Composant PDFDocument non trouvé lors de l'extraction.");
+    }
+    
+    const pdfBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+    let customMetadataValue: string | undefined = undefined;
+
+    if (typeof pdfDoc.getCustomMetadata === 'function') {
+        customMetadataValue = pdfDoc.getCustomMetadata(PDF_CUSTOM_METADATA_KEY);
+    } else {
+        console.warn(`[PDF Lib] pdfDoc.getCustomMetadata n'est pas une fonction. Version de pdf-lib potentiellement incompatible ou autre problème. Impossible de récupérer les métadonnées personnalisées de cette manière.`);
+        // Fallback or simple return of empty string if method doesn't exist
+        console.log("[PDF Extract] Message non trouvé (getCustomMetadata non disponible). Retour d'une chaîne vide.");
+        return "";
+    }
+
+    console.log(`[PDF Extract] Valeur brute des métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}':`, customMetadataValue);
+
+    if (customMetadataValue) {
+        console.log(`[PDF Extract] Métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' trouvées.`);
+        const base64EncodedMessage = customMetadataValue;
+
+        if (base64EncodedMessage && base64EncodedMessage.trim().length > 0) {
+            const decodedBytes = base64ToUint8Array(base64EncodedMessage); 
+            console.log("[PDF Extract] Octets décodés (longueur):", decodedBytes.length);
+            const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes); 
+            console.log("[PDF Extract] Texte décodé:", `"${extractedText}"`);
+            return extractedText;
+        } else {
+            console.log("[PDF Extract] La valeur des métadonnées personnalisées est vide ou ne contient que des espaces.");
+        }
+    } else {
+        console.log(`[PDF Extract] Métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' non trouvées via getCustomMetadata.`);
+    }
+    
+    console.log("[PDF Extract] Message non trouvé dans les métadonnées personnalisées. Retour d'une chaîne vide.");
+    return ""; 
+
+  } catch (err) {
+    console.error("[PDF Extract] Erreur lors de l'extraction réelle du PDF:", err);
+    // Propagate error for UI handling
+    throw new Error(`Erreur lors de l'extraction PDF: ${(err as Error).message}`);
   }
-  
-  const pdfBuffer = await file.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(pdfBuffer);
-
-  const customMetadataValue = pdfDoc.getCustomMetadata(PDF_CUSTOM_METADATA_KEY);
-  console.log(`[PDF Extract] Valeur brute des métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}':`, customMetadataValue);
-
-  if (customMetadataValue) {
-      console.log(`[PDF Extract] Métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' trouvées.`);
-      const base64EncodedMessage = customMetadataValue;
-
-      if (base64EncodedMessage && base64EncodedMessage.trim().length > 0) {
-          const decodedBytes = base64ToUint8Array(base64EncodedMessage); 
-          console.log("[PDF Extract] Octets décodés (longueur):", decodedBytes.length);
-          // Use TextDecoder with fatal:true to ensure it throws on invalid UTF-8
-          const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes); 
-          console.log("[PDF Extract] Texte décodé:", `"${extractedText}"`);
-          return extractedText;
-      } else {
-          console.log("[PDF Extract] La valeur des métadonnées personnalisées est vide après la suppression du préfixe.");
-      }
-  } else {
-      console.log(`[PDF Extract] Métadonnées personnalisées '${PDF_CUSTOM_METADATA_KEY}' non trouvées.`);
-  }
-  
-  console.log("[PDF Extract] Message non trouvé dans les métadonnées personnalisées. Retour d'une chaîne vide.");
-  return ""; 
 }
 
 
