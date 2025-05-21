@@ -9,7 +9,7 @@ export default function AppHeader() {
         <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <div style={{ position: 'relative', width: '40px', height: '40px' }} className="rounded-sm bg-primary-foreground/20 p-1">
             <Image 
-              src="/logo.png" 
+              src="https://i.ibb.co/6739X3nZ/steglogo.png" 
               alt="Steg'Engine Logo" 
               layout="fill" 
               objectFit="contain" 

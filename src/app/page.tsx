@@ -62,13 +62,14 @@ export default function HomePage() {
           <Image
             src="/stegengine_hero.svg"
             alt="Logo Steg'Engine Hero"
-            width={192}
-            height={192}
-            className="h-32 w-32 md:h-48 md:w-48 object-contain"
-            data-ai-hint="abstract geometric engine"
+            width={256} 
+            height={256}
+            className="h-40 w-40 md:h-56 md:w-56 lg:h-64 lg:w-64 object-contain"
+            data-ai-hint="owl shield logo"
+            priority
             onError={(e) => {
               (e.target as HTMLImageElement).onerror = null;
-              (e.target as HTMLImageElement).src = 'https://placehold.co/192x192.png';
+              (e.target as HTMLImageElement).src = 'https://i.ibb.co/6739X3nZ/steglogo.png'; // Fallback to the header logo if hero SVG is missing
             }}
           />
         </div>
