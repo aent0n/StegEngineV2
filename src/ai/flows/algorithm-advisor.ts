@@ -16,7 +16,7 @@ import {z} from 'genkit';
 const AlgorithmAdvisorInputSchema = z.object({
   fileType: z
     .string()
-    .describe("Le type de fichier pour cacher le message (ex: 'image', 'audio', 'texte', 'pdf', 'vidéo')."),
+    .describe("Le type de fichier pour cacher le message (ex: 'image', 'audio', 'texte', 'pdf')."), // Removed 'vidéo'
   message: z.string().describe('Le message à cacher.'),
   availableAlgorithms: z.array(z.string()).describe('Liste des noms des algorithmes disponibles parmi lesquels choisir.'),
 });
@@ -54,6 +54,7 @@ Suggérez le meilleur algorithme de la liste fournie et expliquez pourquoi c'est
 Assurez-vous que l'algorithme que vous suggérez peut gérer le type de fichier spécifique et qu'il est présent dans la liste ci-dessus.
 La justification doit être concise et aller à l'essentiel (1-2 phrases maximum), en considérant l'impact sur la taille du fichier, la sécurité et la facilité d'extraction.
 Évitez de suggérer des algorithmes qui ne sont pas pratiques, qui ont des vulnérabilités connues, ou qui ne sont pas dans la liste fournie.
+Ne suggérez pas d'algorithmes pour des types de fichiers non listés (ex: vidéo).
 Répondez entièrement en français.
 `,
 });
@@ -69,4 +70,3 @@ const algorithmAdvisorFlow = ai.defineFlow(
     return output!;
   }
 );
-

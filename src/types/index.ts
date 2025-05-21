@@ -44,14 +44,14 @@ export interface StegToolState {
   isGeneratingCoverText?: boolean;
 }
 
-export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf' | 'video';
+export type FileTypeOptionValue = 'image' | 'audio' | 'text' | 'pdf'; // Removed 'video'
 
 export const fileTypeOptions: { value: FileTypeOptionValue, label: string }[] = [
   { value: 'image', label: 'Image (PNG)' },
   { value: 'audio', label: 'Audio (WAV)' },
   { value: 'text', label: 'Texte (TXT)' },
   { value: 'pdf', label: 'Document PDF' },
-  { value: 'video', label: 'Vidéo (MP4, AVI)' }, // This is just for the AI advisor, no video tool yet
+  // { value: 'video', label: 'Vidéo (MP4, AVI)' }, // Removed video
 ];
 
 export const lsbPngAlgorithm: SteganographyAlgorithm = { 
@@ -101,7 +101,7 @@ export const zeroWidthCharsTextAlgorithm: SteganographyAlgorithm = {
 };
 
 export const pdfMetadataAlgorithm: SteganographyAlgorithm = {
-  id: 'pdf_metadata_simulated', // ID remains same as it's what the page uses
+  id: 'pdf_metadata_simulated', 
   name: 'Métadonnées PDF (Champ Sujet)',
   description: 'Dissimulation de données dans le champ "Sujet" des métadonnées d\'un fichier PDF.',
   supportedFileTypes: ['application/pdf'],
@@ -116,5 +116,5 @@ export const mockAlgorithms: SteganographyAlgorithm[] = [
   whitespaceTextAlgorithm,
   zeroWidthCharsTextAlgorithm,
   pdfMetadataAlgorithm,
-  { id: 'dct_jpeg', name: 'DCT (JPEG) - Théorique', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (non implémenté).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
+  // { id: 'dct_jpeg', name: 'DCT (JPEG) - Théorique', description: 'Basé sur la transformée en cosinus discrète, pour les images JPEG (non implémenté).', supportedFileTypes: ['image/jpeg', 'image/jpg'] },
 ];
