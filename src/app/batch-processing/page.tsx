@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { mockAlgorithms, type SteganographyAlgorithm } from "@/types";
-import { Upload, Settings, Play, Loader2, CheckCircle, XCircle, FileText, ImageIcon, MusicIcon, FileQuestionIcon, AlertTriangle } from "lucide-react";
+import { Upload, Settings, Play, Loader2, CheckCircle, XCircle, FileText as FileTextLucide, ImageIcon, MusicIcon, FileQuestionIcon, AlertTriangle } from "lucide-react"; // Renamed FileText to FileTextLucide
 import { getCapacityInfo as getImageCapacityInfo } from '@/lib/steganography';
 import { getAudioCapacityInfo } from '@/lib/audioSteganography';
 import { getTextCapacityInfo } from '@/lib/textSteganography';
@@ -30,8 +30,8 @@ const getFileIcon = (fileType: string) => {
   if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-primary" />;
   if (fileType.startsWith('audio/')) return <MusicIcon className="h-5 w-5 text-primary" />;
   if (fileType === 'application/pdf') return <FileQuestionIcon className="h-5 w-5 text-primary" />;
-  if (fileType.startsWith('text/')) return <FileTextIcon className="h-5 w-5 text-primary" />;
-  return <FileText className="h-5 w-5 text-muted-foreground" />;
+  if (fileType.startsWith('text/')) return <FileTextLucide className="h-5 w-5 text-primary" />; // Used renamed import
+  return <FileTextLucide className="h-5 w-5 text-muted-foreground" />; // Used renamed import
 };
 
 const getMajorFileType = (mimeType: string): string => {
@@ -76,7 +76,7 @@ export default function BatchProcessingPage() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) {
-      event.target.value = ""; // Clear the input visually if user cancels or selects no files
+      event.target.value = ""; 
       return;
     }
     
@@ -105,13 +105,24 @@ export default function BatchProcessingPage() {
     setAlgorithmSelections(updatedAlgorithmSelections);
 
     setSelectedFiles(prevFiles => {
-      const updatedFiles = [...prevFiles];
-      newBatchFiles.forEach(nf => {
-        if (!updatedFiles.some(ef => ef.id === nf.id || (ef.file.name === nf.file.name && ef.file.lastModified === nf.file.lastModified && ef.file.size === nf.file.size) )) {
-          updatedFiles.push(nf);
-        }
+      const existingFileKeys = new Set(
+        prevFiles.map(f => `${f.file.name}|${f.file.size}|${f.file.lastModified}`)
+      );
+      
+      const filesToAdd = newBatchFiles.filter(bf => {
+        const key = `${bf.file.name}|${bf.file.size}|${bf.file.lastModified}`;
+        return !existingFileKeys.has(key);
       });
-      return updatedFiles;
+
+      if (filesToAdd.length > 0) {
+        return [...prevFiles, ...filesToAdd];
+      }
+      // If no new unique files were selected (e.g., all were duplicates or newBatchFiles was empty),
+      // return the previous state. If prevFiles was empty and newBatchFiles was empty, this also works.
+      // To ensure re-render if only duplicates were selected but the input was cleared, 
+      // it's safer to return a new reference if newBatchFiles was not empty, even if filesToAdd is.
+      // However, the primary goal is to add *new* files.
+      return prevFiles; 
     });
     event.target.value = "";
   };
@@ -168,7 +179,7 @@ export default function BatchProcessingPage() {
     let allAlgorithmsValidlySelectedForProcessing = true;
 
     selectedFiles.forEach(batchFile => {
-        if (batchFile.status === 'pending' || batchFile.status === 'no_algorithm') { // Only check files that are candidates for processing
+        if (batchFile.status === 'pending' || batchFile.status === 'no_algorithm') { 
             const majorType = getMajorFileType(batchFile.file.type);
             const compatibleAlgos = getCompatibleAlgorithms(majorType);
             if (compatibleAlgos.length > 0 && (!algorithmSelections[majorType] || algorithmSelections[majorType] === 'none')) {
@@ -196,123 +207,127 @@ export default function BatchProcessingPage() {
 
     setIsProcessing(true);
 
-    const filesToProcess = selectedFiles.filter(bf => {
+    const filesToProcessInitially = selectedFiles.filter(bf => {
       const majorType = getMajorFileType(bf.file.type);
       const algoId = algorithmSelections[majorType];
       if (!algoId || algoId === 'none') return false;
       const algoDetails = mockAlgorithms.find(a => a.id === algoId);
-      return algoDetails && algoDetails.supportedFileTypes.includes(bf.file.type);
+      // Ensure the specific file type is supported by the selected algorithm for its major type
+      return algoDetails && algoDetails.supportedFileTypes.includes(bf.file.type); 
     });
 
-    if (filesToProcess.length > 0) {
-        toast({ title: "Traitement par lots démarré", description: `Vérification de capacité et traitement de ${filesToProcess.length} fichiers compatibles...` });
+    if (filesToProcessInitially.length > 0) {
+        toast({ title: "Traitement par lots démarré", description: `Vérification de capacité et traitement de ${filesToProcessInitially.length} fichiers compatibles...` });
     } else {
-         const incompatibleFiles = selectedFiles.filter(bf => {
+         const incompatibleFilesCount = selectedFiles.filter(bf => {
             const majorType = getMajorFileType(bf.file.type);
             const algoId = algorithmSelections[majorType];
-            if (!algoId || algoId === 'none') return true; // No algo or 'none' selected
+            if (!algoId || algoId === 'none') return true; 
             const algoDetails = mockAlgorithms.find(a => a.id === algoId);
-            return !algoDetails || !algoDetails.supportedFileTypes.includes(bf.file.type); // Algo found but not compatible
+            return !algoDetails || !algoDetails.supportedFileTypes.includes(bf.file.type); 
         }).length;
 
-        if (incompatibleFiles > 0 && selectedFiles.filter(f => f.status === 'no_algorithm').length === 0) {
+        if (incompatibleFilesCount > 0 && selectedFiles.filter(f => f.status === 'no_algorithm').length === 0) {
              toast({ title: "Traitement par lots", description: "Aucun fichier compatible à traiter après sélection de l'algorithme." });
         } else if (selectedFiles.filter(f => f.status === 'no_algorithm').length > 0) {
             // This case is handled by the "Algorithme manquant" toast earlier.
-        } else {
-            toast({ title: "Traitement par lots", description: "Aucun fichier à traiter." });
+        } else if (selectedFiles.length > 0) { // Files selected, but none are processable for other reasons
+            toast({ title: "Traitement par lots", description: "Aucun fichier ne sera traité avec les sélections actuelles." });
+        } else { // No files selected at all
+            // This case is handled by the initial check selectedFiles.length === 0
         }
     }
     
-    // Initial status update for files that are about to be processed
     setSelectedFiles(prevFiles => prevFiles.map(bf => {
         const majorType = getMajorFileType(bf.file.type);
         const algoId = algorithmSelections[majorType];
         if (!algoId || algoId === 'none') {
              if (getCompatibleAlgorithms(majorType).length === 0) {
                 return { ...bf, status: 'incompatible', resultMessage: `Aucun algorithme compatible pour ${getFileTypeLabel(majorType)}.` };
-             } else if (bf.status === 'pending' && (!algoId || algoId === 'none')) { // Explicitly not selected by user
+             } else if (bf.status === 'pending' && (!algoId || algoId === 'none')) { 
                 return { ...bf, status: 'no_algorithm', resultMessage: "Aucun algorithme sélectionné." };
              }
         } else {
             const algoDetails = mockAlgorithms.find(a => a.id === algoId);
             if (algoDetails && algoDetails.supportedFileTypes.includes(bf.file.type)) {
-                return { ...bf, status: 'processing', resultMessage: 'En attente de traitement...' };
+                // Only mark as processing if it's truly ready for it
+                if (filesToProcessInitially.some(f => f.id === bf.id)) {
+                    return { ...bf, status: 'processing', resultMessage: 'En attente de traitement...' };
+                } else { // Was not in filesToProcessInitially, implies it was filtered out, likely incompatible
+                    return { ...bf, status: 'incompatible', resultMessage: `Type (${bf.file.type}) incompatible avec ${algoDetails.name}.` };
+                }
             } else if (algoDetails && !algoDetails.supportedFileTypes.includes(bf.file.type)) {
                 return { ...bf, status: 'incompatible', resultMessage: `Type (${bf.file.type}) incompatible avec ${algoDetails.name}.` };
             }
         }
-        return bf; // Keep existing status for already processed or error files
+        return bf; 
     }));
 
 
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const currentFile = selectedFiles[i]; // Get the most up-to-date file info
-      
-      // Skip files not pending or not matching initial filtering criteria
-      const majorType = getMajorFileType(currentFile.file.type);
-      const algorithmId = algorithmSelections[majorType];
-      if (!algorithmId || algorithmId === 'none' || currentFile.status !== 'processing') { // status should be 'processing' from above
-          if (currentFile.status === 'pending' && algorithmId && algorithmId !== 'none') { // File was pending but might have been deemed incompatible by the previous mapping
-                const algoDetails = mockAlgorithms.find(a => a.id === algorithmId);
-                if(algoDetails && !algoDetails.supportedFileTypes.includes(currentFile.file.type)) {
-                     setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'incompatible', resultMessage: `Type (${f.file.type}) incompatible avec ${algoDetails.name}.` } : f));
-                } else if (!algoDetails) {
-                    setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'error', resultMessage: `Algorithme ${algorithmId} non trouvé.` } : f));
-                }
-          }
+    for (const batchFile of selectedFiles) {
+      if (batchFile.status !== 'processing') { 
+          // If not marked for processing initially (e.g. incompatible, no_algo, or already processed/error)
+          // or if its status changed from 'processing' by a previous iteration (e.g. capacity error)
           continue;
       }
 
+      const majorType = getMajorFileType(batchFile.file.type);
+      const algorithmId = algorithmSelections[majorType];
+      
+      // This check should be redundant due to initial filtering, but good for safety.
+      if (!algorithmId || algorithmId === 'none') {
+        setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, status: 'error', resultMessage: 'Erreur interne: Algorithme non trouvé pendant traitement.' } : f));
+        continue;
+      }
       const algorithmDetails = mockAlgorithms.find(algo => algo.id === algorithmId)!;
 
-      setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'processing', resultMessage: 'Vérification de capacité...' } : f));
-      await new Promise(resolve => setTimeout(resolve, 200)); // Simulate small delay for UI update
+
+      setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: 'Vérification de capacité...' } : f));
+      await new Promise(resolve => setTimeout(resolve, 100)); 
 
       let realCapacityBytes = -1;
       let capacityCheckError: string | null = null;
 
       try {
-        if (!algorithmDetails.isMetadataBased) {
+        if (!algorithmDetails.isMetadataBased && algorithmDetails.id !== 'pdf_metadata_simulated') { // pdf_metadata_simulated uses estimatedCapacity
           if (majorType === 'image') {
-            const capacity = await getImageCapacityInfo(currentFile.file, algorithmId);
+            const capacity = await getImageCapacityInfo(batchFile.file, algorithmId);
             realCapacityBytes = capacity.capacityBytes;
           } else if (majorType === 'audio') {
-            const capacity = await getAudioCapacityInfo(currentFile.file, algorithmId);
+            const capacity = await getAudioCapacityInfo(batchFile.file, algorithmId);
             realCapacityBytes = capacity.capacityBytes;
           } else if (majorType === 'text') {
-            const textContent = await currentFile.file.text();
+            const textContent = await batchFile.file.text();
             const capacity = await getTextCapacityInfo(textContent, algorithmId);
             realCapacityBytes = capacity.capacityBytes;
           }
         } else if (algorithmDetails.estimatedCapacity) {
-            realCapacityBytes = algorithmDetails.estimatedCapacity; // Use estimate for metadata
+            realCapacityBytes = algorithmDetails.estimatedCapacity; 
         }
       } catch (e: any) {
-        console.error(`Erreur de vérification de capacité pour ${currentFile.file.name}:`, e);
-        capacityCheckError = `Erreur capacité: ${e.message}`;
+        console.error(`Erreur de vérification de capacité pour ${batchFile.file.name} (${algorithmDetails.name}):`, e);
+        capacityCheckError = `Erreur capacité: ${e.message.substring(0, 100)}`;
       }
 
       if (capacityCheckError) {
-        setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'error', resultMessage: capacityCheckError } : f));
+        setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, status: 'error', resultMessage: capacityCheckError } : f));
         continue;
       }
 
       if (realCapacityBytes !== -1 && messageToEmbedBytes > realCapacityBytes) {
-        setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'capacity_error', resultMessage: `Message trop long (${messageToEmbedBytes}o). Capacité: ${realCapacityBytes}o.` } : f));
+        setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, status: 'capacity_error', resultMessage: `Message trop long (${messageToEmbedBytes}o). Capacité: ${realCapacityBytes}o.` } : f));
         continue;
       }
       
-      // If capacity is fine, proceed to simulate embedding
-      setSelectedFiles(prev => prev.map(f => f.id === currentFile.id ? { ...f, status: 'processing', resultMessage: `Intégration (${algorithmDetails.name})...` } : f));
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000)); // Simulate embedding
+      setSelectedFiles(prev => prev.map(f => f.id === batchFile.id ? { ...f, resultMessage: `Intégration (${algorithmDetails.name})...` } : f));
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500)); 
 
-      const isSuccess = Math.random() > 0.2; // Simulate success/failure
+      const isSuccess = Math.random() > 0.1; // Simulate success/failure (higher success rate)
       const resultMsg = isSuccess ? `Message intégré via ${algorithmDetails.name}.` : `Échec de l'intégration via ${algorithmDetails.name}. (simulé)`;
 
       setSelectedFiles(prev =>
         prev.map(f =>
-          f.id === currentFile.id
+          f.id === batchFile.id
             ? {
                 ...f,
                 status: isSuccess ? 'success' : 'error',
@@ -324,7 +339,6 @@ export default function BatchProcessingPage() {
     }
 
     setIsProcessing(false);
-    // Re-fetch selectedFiles from state to get the very latest status for the summary toast
     setSelectedFiles(currentSelectedFiles => {
         const finalSuccessCount = currentSelectedFiles.filter(f => f.status === 'success').length;
         const finalErrorCount = currentSelectedFiles.filter(f => f.status === 'error' || f.status === 'capacity_error').length;
@@ -344,7 +358,7 @@ export default function BatchProcessingPage() {
                 description: `${finalSuccessCount} succès, ${finalErrorCount} échecs, ${finalIncompatibleCount} incompatibles, ${finalNoAlgoCount} sans algo.`
             });
         }
-        return currentSelectedFiles; // Return unchanged, just using this to read the latest state
+        return currentSelectedFiles; 
     });
   };
 
@@ -450,7 +464,7 @@ export default function BatchProcessingPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><FileText className="text-primary"/> Fichiers Sélectionnés et Résultats</CardTitle>
+            <CardTitle className="flex items-center gap-2"><FileTextLucide className="text-primary"/> Fichiers Sélectionnés et Résultats</CardTitle> {/* Used renamed import */}
             <CardDescription>Liste des fichiers et leur état de traitement.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -463,7 +477,7 @@ export default function BatchProcessingPage() {
                     const majorType = getMajorFileType(batchFile.file.type);
                     const selectedAlgoId = algorithmSelections[majorType];
                     const algorithmDetails = selectedAlgoId ? mockAlgorithms.find(a => a.id === selectedAlgoId) : null;
-                    const estimatedCapacity = algorithmDetails?.isMetadataBased ? algorithmDetails.estimatedCapacity : null;
+                    const estimatedCapacity = algorithmDetails?.isMetadataBased || algorithmDetails?.id === 'pdf_metadata_simulated' ? algorithmDetails.estimatedCapacity : null;
                     const percentageUsed = estimatedCapacity && messageToEmbedBytes > 0 && estimatedCapacity > 0
                                           ? Math.min(100, (messageToEmbedBytes / estimatedCapacity) * 100)
                                           : 0;
@@ -491,21 +505,24 @@ export default function BatchProcessingPage() {
                             </Button>
                           </div>
                         </div>
-                        {/* Capacity Info Display */}
-                        {algorithmDetails && batchFile.status === 'pending' && (
+                        {algorithmDetails && (batchFile.status === 'pending' || (batchFile.status === 'processing' && batchFile.resultMessage?.includes('Vérification de capacité'))) && (
                           <div className="text-xs text-muted-foreground mt-1 border-t pt-1">
-                            {algorithmDetails.isMetadataBased && estimatedCapacity ? (
+                            {algorithmDetails.isMetadataBased || algorithmDetails.id === 'pdf_metadata_simulated' ? (
                               <>
-                                <p>Message: {messageToEmbedBytes} o / Capacité estimée ({algorithmDetails.name}): {estimatedCapacity} o</p>
-                                {estimatedCapacity > 0 && <Progress value={percentageUsed} className="h-1.5 mt-0.5" />}
-                                {messageToEmbedBytes > estimatedCapacity && <p className="text-orange-600 text-xs">Le message dépasse la capacité estimée.</p>}
+                                {estimatedCapacity != null && (
+                                  <>
+                                    <p>Message: {messageToEmbedBytes} o / Capacité estimée ({algorithmDetails.name}): {estimatedCapacity} o</p>
+                                    {estimatedCapacity > 0 && <Progress value={percentageUsed} className="h-1.5 mt-0.5" />}
+                                    {messageToEmbedBytes > estimatedCapacity && <p className="text-orange-600 text-xs">Le message dépasse la capacité estimée.</p>}
+                                  </>
+                                )}
                               </>
-                            ) : !algorithmDetails.isMetadataBased ? (
+                            ) : (
                               <>
                                 <p>Message à intégrer: {messageToEmbedBytes} o ({algorithmDetails.name})</p>
                                 <p>Capacité réelle vérifiée lors du traitement.</p>
                               </>
-                            ) : null}
+                            )}
                           </div>
                         )}
                         {batchFile.resultMessage && (
@@ -514,7 +531,7 @@ export default function BatchProcessingPage() {
                               batchFile.status === 'error' || batchFile.status === 'capacity_error' ? 'text-red-600' :
                               batchFile.status === 'incompatible' ? 'text-orange-600' :
                               batchFile.status === 'no_algorithm' ? 'text-yellow-600' : 
-                              batchFile.status === 'processing' ? 'text-blue-600' : 'text-muted-foreground' // For pending/processing messages
+                              batchFile.status === 'processing' ? 'text-blue-600' : 'text-muted-foreground'
                           }`} title={batchFile.resultMessage}>
                               {batchFile.resultMessage}
                           </p>
@@ -531,3 +548,5 @@ export default function BatchProcessingPage() {
     </div>
   );
 }
+
+    
