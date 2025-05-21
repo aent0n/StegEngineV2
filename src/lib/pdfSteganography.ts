@@ -2,7 +2,6 @@
 import type { CapacityInfo } from '@/types';
 
 const SIMULATED_PDF_CAPACITY_BYTES = 2048; // Example: 2KB simulated capacity
-const SIMULATED_EXTRACTED_MESSAGE = "Message extrait (simulation PDF)";
 const PDF_CUSTOM_METADATA_KEY = "StegEngineHiddenMessage"; // Custom key for our data
 
 // Helper to convert Uint8Array to Base64 string
@@ -26,14 +25,14 @@ function base64ToUint8Array(base64: string): Uint8Array {
     }
     return bytes;
   } catch (e) {
-    console.error("Erreur de décodage Base64:", e);
-    throw new Error("Impossible d'extraire le message : décodage Base64 invalide.");
+    console.error("[PDF Lib] Erreur de décodage Base64:", e);
+    throw new Error(`Base64 decoding failed: ${(e as Error).message}`);
   }
 }
 
 
 export async function getPdfCapacityInfo(file: File, algorithmId: string): Promise<CapacityInfo> {
-  if (algorithmId === 'pdf_metadata_simulated') { // Keep ID same, but behavior changes
+  if (algorithmId === 'pdf_metadata_simulated') { 
     return { 
       capacityBytes: SIMULATED_PDF_CAPACITY_BYTES, 
       width: 0, 
@@ -50,7 +49,12 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
   }
 
   try {
-    const { PDFDocument } = await import('pdf-lib');
+    const pdfLib = await import('pdf-lib');
+    if (!pdfLib || !pdfLib.PDFDocument) {
+        console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé. Retour au comportement simulé pour l'intégration.");
+        throw new Error("pdf-lib non chargé"); // This will be caught by the page's handler
+    }
+    const { PDFDocument } = pdfLib;
     const pdfBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(pdfBuffer);
 
@@ -58,6 +62,7 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
     const base64EncodedMessage = uint8ArrayToBase64(messageBytes);
 
     pdfDoc.setProducer(PDF_CUSTOM_METADATA_KEY + ":" + base64EncodedMessage);
+    // console.log("[PDF Embed] Producer set with:", PDF_CUSTOM_METADATA_KEY + ":" + base64EncodedMessage);
 
     const modifiedPdfBytes = await pdfDoc.save();
     const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
@@ -65,11 +70,11 @@ export async function embedMessageInPdf(file: File, message: string, algorithmId
 
   } catch (err) {
     console.warn(
-      "Tentative d'intégration PDF réelle (via Producer) échouée. 'pdf-lib' est-il installé et l'opération est-elle valide ? Erreur:",
+      "[PDF Lib] Tentative d'intégration PDF réelle (via Producer) échouée. Erreur:",
       err
     );
-    const error = err as Error;
-    throw new Error(`Erreur lors de l'intégration PDF: ${error.message}. Retour au comportement simulé.`);
+    // Let the error propagate to be handled by the page component
+    throw new Error(`Erreur lors de l'intégration PDF: ${(err as Error).message}`);
   }
 }
 
@@ -78,49 +83,69 @@ export async function extractMessageFromPdf(file: File, algorithmId: string): Pr
     throw new Error(`Algorithme d'extraction PDF non supporté: ${algorithmId}`);
   }
 
-  try {
-    const { PDFDocument } = await import('pdf-lib');
-    const pdfBuffer = await file.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
-
-    const producer = pdfDoc.getProducer();
-    
-    if (producer && producer.startsWith(PDF_CUSTOM_METADATA_KEY + ":")) {
-        const base64EncodedMessage = producer.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
-        if (base64EncodedMessage) {
-            const decodedBytes = base64ToUint8Array(base64EncodedMessage);
-            return new TextDecoder().decode(decodedBytes);
-        }
-    }
-    
-    // If message not found in Producer, try Keywords as a fallback from previous attempt (optional)
-    // This part can be removed if we decide Producer is the sole method now.
-    // For now, keeping it might help with files processed by the immediately prior version.
-    const keywordsString = pdfDoc.getKeywords();
-    if (keywordsString) {
-        const keywords = keywordsString.split(', ');
-        const hiddenMessageKeyword = keywords.find(kw => kw.startsWith(PDF_CUSTOM_METADATA_KEY + ":"));
-        if (hiddenMessageKeyword) {
-            const base64EncodedMessage = hiddenMessageKeyword.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
-            if (base64EncodedMessage) {
-                const decodedBytes = base64ToUint8Array(base64EncodedMessage);
-                return new TextDecoder().decode(decodedBytes);
-            }
-        }
-    }
-
-    return ""; // No message found with our key in Producer or Keywords
-
-  } catch (err) {
-    console.warn(
-      "Tentative d'extraction PDF réelle (via Producer/Keywords) échouée. 'pdf-lib' est-il installé et le fichier contient-il le message ? Erreur:",
-      err
-    );
-    // To provide better feedback, let's not return simulated message on error, but an empty string or throw
-    // throw new Error(`Erreur lors de l'extraction PDF: ${(err as Error).message}. Retour au comportement simulé.`);
-    return ""; // Return empty if real extraction fails, rather than simulated message.
+  console.log("[PDF Extract] Début de l'extraction.");
+  const pdfLib = await import('pdf-lib');
+  if (!pdfLib || !pdfLib.PDFDocument) {
+      console.warn("[PDF Lib] pdf-lib n'a pas pu être chargé. Impossible d'effectuer une extraction réelle.");
+      throw new Error("pdf-lib non chargé pour l'extraction");
   }
+  const { PDFDocument } = pdfLib;
+  const pdfBuffer = await file.arrayBuffer();
+  
+  // Errors from PDFDocument.load, base64ToUint8Array, or TextDecoder will propagate
+  // up to the caller (pdf-steg/page.tsx), which will handle UI updates for errors.
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+  const producer = pdfDoc.getProducer();
+  console.log("[PDF Extract] Producer field raw value:", producer);
+
+  if (producer && producer.startsWith(PDF_CUSTOM_METADATA_KEY + ":")) {
+      console.log("[PDF Extract] Producer field matches prefix.");
+      const base64EncodedMessage = producer.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
+      console.log("[PDF Extract] Extracted Base64 from Producer:", base64EncodedMessage);
+
+      if (base64EncodedMessage) {
+          // base64ToUint8Array will throw if atob fails
+          const decodedBytes = base64ToUint8Array(base64EncodedMessage); 
+          console.log("[PDF Extract] Decoded bytes length from Producer:", decodedBytes.length);
+          
+          // new TextDecoder with fatal:true will throw if UTF-8 is invalid
+          const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes); 
+          console.log("[PDF Extract] Decoded text from Producer:", extractedText);
+          return extractedText;
+      } else {
+          console.log("[PDF Extract] Base64 part in Producer is empty after prefix removal.");
+      }
+  } else {
+      console.log("[PDF Extract] Producer field does not match prefix or is null/undefined.");
+  }
+  
+  // Fallback to Keywords (for compatibility with a previous brief version)
+  const keywordsString = pdfDoc.getKeywords();
+  console.log("[PDF Extract] Keywords field raw value:", keywordsString);
+  if (keywordsString) {
+      const keywords = keywordsString.split(', '); 
+      const hiddenMessageKeyword = keywords.find(kw => kw.startsWith(PDF_CUSTOM_METADATA_KEY + ":"));
+      if (hiddenMessageKeyword) {
+          console.log("[PDF Extract] Found matching keyword in Keywords (fallback):", hiddenMessageKeyword);
+          const base64Fallback = hiddenMessageKeyword.substring((PDF_CUSTOM_METADATA_KEY + ":").length);
+          console.log("[PDF Extract] Extracted Base64 from Keywords:", base64Fallback);
+          if (base64Fallback) {
+              const decodedBytes = base64ToUint8Array(base64Fallback);
+              console.log("[PDF Extract] Decoded bytes length from Keywords:", decodedBytes.length);
+              const extractedText = new TextDecoder('utf-8', { fatal: true }).decode(decodedBytes);
+              console.log("[PDF Extract] Decoded text from Keywords:", extractedText);
+              return extractedText;
+          } else {
+               console.log("[PDF Extract] Base64 part in Keywords is empty after prefix removal.");
+          }
+      }
+  }
+
+  console.log("[PDF Extract] Message non trouvé dans les métadonnées Producer ou Keywords avec la clé attendue.");
+  return ""; // Message genuinely not found
 }
+
 
 export async function convertObjectUrlToDataUri(objectUrl: string): Promise<string> {
   const response = await fetch(objectUrl);
