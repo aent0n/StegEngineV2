@@ -16,7 +16,7 @@ const initialState: StegToolState = {
   carrierFile: null,
   fileName: null,
   filePreviewUrl: null,
-  stegoFileDataUri: null, // Will store Object URL from embed functions
+  stegoFileDataUri: null, 
   messageToEmbed: "",
   extractedMessage: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
@@ -41,7 +41,6 @@ export default function ImageStegPage() {
       URL.revokeObjectURL(objectUrlToRevoke);
       setObjectUrlToRevoke(null);
     }
-    // Revoke previous filePreviewUrl if it's a blob URL
     if (state.filePreviewUrl && state.filePreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(state.filePreviewUrl);
     }
@@ -61,7 +60,6 @@ export default function ImageStegPage() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
-    // Revoke previous URLs
     if (state.filePreviewUrl && state.filePreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(state.filePreviewUrl);
     }
@@ -71,8 +69,9 @@ export default function ImageStegPage() {
     }
     
     if (file) {
-      if (!selectedAlgorithm?.supportedFileTypes.includes(file.type)) {
-         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${selectedAlgorithm?.name || 'sélectionné'} (${selectedAlgorithm?.supportedFileTypes.join(', ') || 'image/png'}).` });
+      const currentSelectedAlgo = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
+      if (!currentSelectedAlgo?.supportedFileTypes.includes(file.type)) {
+         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'image/png'}).` });
         event.target.value = ""; 
         resetStateForNewFile(true);
         return;
@@ -87,15 +86,16 @@ export default function ImageStegPage() {
         stegoFileDataUri: null,
         statusMessage: null,
         extractedMessage: null, 
-        capacityInfo: null, // Reset before fetching new one
+        capacityInfo: null, 
       }));
 
       if (state.selectedAlgorithmId) {
         try {
           const info = await getCapacityInfo(file, state.selectedAlgorithmId);
+          const algoForCapacityToast = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
           const capacityText = info.isEstimate 
-            ? `Capacité estimée pour ${selectedAlgorithm?.name}: env. ${info.capacityBytes} octets.`
-            : `Capacité pour ${selectedAlgorithm?.name}: ${info.capacityBytes} octets.`;
+            ? `Capacité estimée pour ${algoForCapacityToast?.name}: env. ${info.capacityBytes} octets.`
+            : `Capacité pour ${algoForCapacityToast?.name}: ${info.capacityBytes} octets.`;
           if (info.width && info.height) {
             setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: `${capacityText} Dimensions: ${info.width}x${info.height}px.`} }));
           } else {
@@ -117,7 +117,7 @@ export default function ImageStegPage() {
   };
 
   const handleAlgorithmChange = async (algorithmId: string) => {
-    resetStateForNewFile(false); // Keep file, but reset capacity and stego data
+    resetStateForNewFile(false); 
     setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessage: null, stegoFileDataUri: null }));
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
@@ -148,7 +148,7 @@ export default function ImageStegPage() {
       operationMode: mode, 
       statusMessage: null, 
       extractedMessage: null, 
-      stegoFileDataUri: null, 
+      // Don't clear stegoFileDataUri on mode change to allow embed then extract from result
     }));
   };
 
@@ -167,15 +167,14 @@ export default function ImageStegPage() {
       toast({ variant: "default", title: "Avertissement de Capacité", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithm.name}. L'intégration pourrait échouer.` });
     }
 
-
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
     try {
       const stegoObjectOrDataUri = await embedMessageInImage(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
       
       if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
-      if (stegoObjectOrDataUri.startsWith('blob:')) { // It's an Object URL
+      if (stegoObjectOrDataUri.startsWith('blob:')) { 
         setObjectUrlToRevoke(stegoObjectOrDataUri);
-      } else { // It's a Data URI, no need to revoke later
+      } else { 
         setObjectUrlToRevoke(null);
       }
 
@@ -202,6 +201,7 @@ export default function ImageStegPage() {
     
     try {
         let downloadableUri = state.stegoFileDataUri;
+        // If it's an object URL, convert to Data URI for robust download
         if (state.stegoFileDataUri.startsWith('blob:')) {
             downloadableUri = await convertObjectUrlToDataUri(state.stegoFileDataUri);
         }
@@ -209,15 +209,11 @@ export default function ImageStegPage() {
         const a = document.createElement('a');
         a.href = downloadableUri;
         const fileExtension = state.fileName.split('.').pop() || 'png';
-        const fileNameBase = state.fileName.substring(0, state.fileName.length - (fileExtension.length + 1));
+        const fileNameBase = state.fileName.substring(0, state.fileName.lastIndexOf('.')) || state.fileName;
         a.download = `steg_${fileNameBase}.${fileExtension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
-        // Note: If it was an Object URL converted to Data URI for download,
-        // the original Object URL (state.stegoFileDataUri) is still managed by objectUrlToRevoke.
-        // No need to revoke downloadableUri if it's a data URI.
         
         toast({ title: "Exporté", description: `Fichier image ${state.fileName} avec message intégré téléchargé.` });
     } catch (error: any) {
@@ -229,13 +225,30 @@ export default function ImageStegPage() {
   };
 
   const handleExtract = async () => {
-    if (!state.carrierFile || !state.selectedAlgorithmId || !selectedAlgorithm) {
-      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier (contenant un message) et choisir un algorithme." });
+    let fileForExtraction: File | null = null;
+
+    if (state.stegoFileDataUri && state.operationMode === 'extract') {
+        try {
+            const response = await fetch(state.stegoFileDataUri);
+            if (!response.ok) throw new Error(`Échec de la récupération du fichier stéganographié: ${response.status}`);
+            const blob = await response.blob();
+            fileForExtraction = new File([blob], state.fileName || "stego_image.png", { type: blob.type || selectedAlgorithm?.supportedFileTypes[0] || "image/png" });
+        } catch (fetchError: any) {
+            toast({ variant: "destructive", title: "Erreur interne", description: `Impossible de charger le fichier modifié pour extraction: ${fetchError.message}` });
+            setState(prev => ({ ...prev, isProcessing: false }));
+            return;
+        }
+    } else if (state.carrierFile) {
+        fileForExtraction = state.carrierFile;
+    }
+
+    if (!fileForExtraction || !state.selectedAlgorithmId || !selectedAlgorithm) {
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier et choisir un algorithme." });
       return;
     }
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
-      const extractedText = await extractMessageFromImage(state.carrierFile, state.selectedAlgorithmId);
+      const extractedText = await extractMessageFromImage(fileForExtraction, state.selectedAlgorithmId);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
@@ -285,9 +298,15 @@ export default function ImageStegPage() {
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && !isCapacityExceeded;
     
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
-  const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
+  const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract')) && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
 
+  // Determine which URL to use for preview in FileUploadCard
+  // In 'extract' mode, if stegoFileDataUri is available, prefer it for preview.
+  // Otherwise, use the general filePreviewUrl (which comes from the uploaded carrierFile).
+  const previewUrlForCard = state.operationMode === 'extract' && state.stegoFileDataUri 
+                            ? state.stegoFileDataUri 
+                            : state.filePreviewUrl;
 
   return (
     <div className="space-y-8">
@@ -297,7 +316,7 @@ export default function ImageStegPage() {
            <FileUploadCard
             carrierFile={state.carrierFile}
             fileName={state.fileName}
-            filePreviewUrl={state.operationMode === 'embed' ? state.filePreviewUrl : (state.stegoFileDataUri || state.filePreviewUrl)}
+            filePreviewUrl={previewUrlForCard}
             onFileChange={handleFileChange}
             messageToEmbed={state.messageToEmbed}
             onMessageToEmbedChange={handleMessageToEmbedChange}

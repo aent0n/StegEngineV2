@@ -1,8 +1,17 @@
 
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Moon, Sun } from 'lucide-react';
 
-export default function AppHeader() {
+interface AppHeaderProps {
+  currentTheme: string;
+  toggleTheme: () => void;
+}
+
+export default function AppHeader({ currentTheme, toggleTheme }: AppHeaderProps) {
   return (
     <header className="bg-primary text-primary-foreground shadow-lg">
       <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -17,7 +26,16 @@ export default function AppHeader() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Steg'Engine</h1>
         </Link>
-        {/* Navigation links from HTML example are not added to keep app single-page focused */}
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="text-primary-foreground hover:bg-primary-foreground/10 focus-visible:ring-primary-foreground"
+          aria-label={currentTheme === 'light' ? 'Passer en mode sombre' : 'Passer en mode clair'}
+        >
+          {currentTheme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </Button>
       </div>
     </header>
   );

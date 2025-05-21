@@ -8,7 +8,7 @@ import AlgorithmAdvisorCard from "@/components/hideaway/AlgorithmAdvisorCard";
 import type { AlgorithmAdvisorOutput } from '@/ai/flows/algorithm-advisor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, Music, FileText, FileQuestion, Layers, ArrowRight } from "lucide-react";
+import { ImageIcon, Music, FileText, FileQuestion as PdfIconLucide, Layers, ArrowRight } from "lucide-react"; // Renamed FileQuestion to PdfIconLucide
 
 const tools = [
   {
@@ -34,8 +34,8 @@ const tools = [
   },
   {
     name: "Stéganographie PDF",
-    description: "Cachez des informations dans les métadonnées de documents PDF.",
-    icon: <FileQuestion className="w-10 h-10 text-primary" />,
+    description: "Cachez des informations dans les métadonnées de documents PDF (champ Sujet).", // Updated description
+    icon: <PdfIconLucide className="w-10 h-10 text-primary" />, // Using renamed import
     href: "/pdf-steg",
     status: "available", 
   },
@@ -60,7 +60,7 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row items-center text-center md:text-left mb-8 md:mb-12 gap-6 md:gap-8 py-8">
         <div className="flex-shrink-0 mx-auto md:mx-0">
           <Image
-            src="/stegengine_hero.svg" // Assurez-vous que ce fichier est dans /public
+            src="/stegengine_hero.svg" 
             alt="Logo Steg'Engine Hero"
             width={256} 
             height={256}
@@ -68,9 +68,8 @@ export default function HomePage() {
             data-ai-hint="owl shield logo"
             priority
             onError={(e) => {
-              // Fallback si stegengine_hero.svg n'est pas trouvé
-              (e.target as HTMLImageElement).onerror = null; // Pour éviter des boucles d'erreur infinies
-              (e.target as HTMLImageElement).src = 'https://i.ibb.co/6739X3nZ/steglogo.png'; // Fallback vers le logo du header
+              (e.target as HTMLImageElement).onerror = null; 
+              (e.target as HTMLImageElement).src = 'https://i.ibb.co/6739X3nZ/steglogo.png'; 
             }}
           />
         </div>
@@ -79,8 +78,7 @@ export default function HomePage() {
             Bienvenue sur Steg'Engine
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto md:mx-0">
-            Votre boîte à outils complète pour les opérations de stéganographie. Choisissez parmi notre variété d'outils
-            pour cacher et extraire des données en utilisant différentes techniques.
+             Steg'Engine est une application web moderne de stéganographie, permettant de dissimuler des informations dans différents types de fichiers (images PNG, audio WAV, textes TXT, et PDF). L'application combine une interface utilisateur intuitive avec des algorithmes de stéganographie côté client pour un traitement sécurisé des données directement dans votre navigateur.
           </p>
         </div>
       </div>

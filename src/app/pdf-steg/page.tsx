@@ -16,14 +16,14 @@ const initialState: StegToolState = {
   carrierFile: null,
   fileName: null,
   filePreviewUrl: null, 
-  stegoFileDataUri: null, // Will store Object URL from embed functions
+  stegoFileDataUri: null, 
   messageToEmbed: "",
   extractedMessage: null,
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
   isExporting: false,
-  isAdvisorLoading: false, // Not used on this page directly
+  isAdvisorLoading: false, 
   operationMode: 'embed',
   statusMessage: null,
   capacityInfo: null,
@@ -48,9 +48,9 @@ export default function PdfStegPage() {
       ...prev,
       carrierFile: clearFileSelection ? null : prev.carrierFile,
       fileName: clearFileSelection ? null : prev.fileName,
-      filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl, // PDF won't have image preview
+      filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl, 
       stegoFileDataUri: null,
-      extractedMessage: null, // Reset on new file or algo change
+      extractedMessage: null, 
       statusMessage: null,
       capacityInfo: null,
     }));
@@ -68,8 +68,9 @@ export default function PdfStegPage() {
     }
 
     if (file) {
-      if (!selectedAlgorithm?.supportedFileTypes.includes(file.type)) {
-         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un fichier compatible avec l'algorithme ${selectedAlgorithm?.name || 'sélectionné'} (${selectedAlgorithm?.supportedFileTypes.join(', ') || 'application/pdf'}).` });
+      const currentSelectedAlgo = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
+      if (!currentSelectedAlgo?.supportedFileTypes.includes(file.type)) {
+         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'application/pdf'}).` });
         event.target.value = ""; 
         resetStateForNewFile(true);
         return;
@@ -80,7 +81,7 @@ export default function PdfStegPage() {
         carrierFile: file,
         fileName: file.name,
         filePreviewUrl: null, 
-        stegoFileDataUri: null, // Clear stego file URI on new file upload
+        stegoFileDataUri: null, 
         statusMessage: null,
         extractedMessage: null, 
         capacityInfo: null, 
@@ -89,7 +90,8 @@ export default function PdfStegPage() {
       if (state.selectedAlgorithmId) {
         try {
           const info = await getPdfCapacityInfo(file, state.selectedAlgorithmId);
-          const capacityText = `Capacité estimée pour ${selectedAlgorithm?.name}: env. ${info.capacityBytes} octets.`;
+          const algoForCapacityToast = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
+          const capacityText = `Capacité estimée pour ${algoForCapacityToast?.name}: env. ${info.capacityBytes} octets.`;
           setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
         } catch (error: any) {
           toast({ variant: "destructive", title: "Erreur de Capacité PDF", description: error.message });
@@ -132,9 +134,6 @@ export default function PdfStegPage() {
       operationMode: mode, 
       statusMessage: null, 
       extractedMessage: null, 
-      // Do not clear stegoFileDataUri when just switching mode,
-      // so user can embed then immediately try to extract from the result.
-      // stegoFileDataUri: null, 
     }));
   };
 
@@ -154,12 +153,12 @@ export default function PdfStegPage() {
       const stegoObjectUrl = await embedMessageInPdf(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
       
       if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
-      setObjectUrlToRevoke(stegoObjectUrl); // Manage the new Object URL
+      setObjectUrlToRevoke(stegoObjectUrl); 
 
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        stegoFileDataUri: stegoObjectUrl, // Store the Object URL of the modified file
+        stegoFileDataUri: stegoObjectUrl, 
         statusMessage: {type: 'success', text:`Message intégré avec succès (${selectedAlgorithm.name}).`} 
       }));
       toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}.` });
@@ -178,7 +177,6 @@ export default function PdfStegPage() {
     setState(prev => ({ ...prev, isExporting: true }));
     
     try {
-        // For PDFs, the stegoFileDataUri should be an Object URL created by embedMessageInPdf
         const a = document.createElement('a');
         a.href = state.stegoFileDataUri; 
         const fileNameBase = state.fileName.substring(0, state.fileName.lastIndexOf('.')) || state.fileName;
@@ -199,8 +197,7 @@ export default function PdfStegPage() {
   const handleExtract = async () => {
     let fileForExtraction: File | null = null;
 
-    // Prioritize using the stegoFileDataUri if available (result of a previous embed)
-    if (state.stegoFileDataUri) {
+    if (state.stegoFileDataUri && state.operationMode === 'extract') {
         try {
             console.log("[PdfStegPage] Extraction: Utilisation de stegoFileDataUri:", state.stegoFileDataUri);
             const response = await fetch(state.stegoFileDataUri);
@@ -208,7 +205,7 @@ export default function PdfStegPage() {
                  throw new Error(`Échec de la récupération du fichier stéganographié: ${response.status} ${response.statusText}`);
             }
             const blob = await response.blob();
-            const fileName = state.fileName || "stego_document.pdf"; // Use original name or a default
+            const fileName = state.fileName || "stego_document.pdf"; 
             fileForExtraction = new File([blob], fileName, { type: "application/pdf" });
             console.log("[PdfStegPage] Fichier pour extraction (depuis stegoFileDataUri):", fileForExtraction.name, fileForExtraction.size);
         } catch (fetchError: any) {
@@ -259,7 +256,6 @@ export default function PdfStegPage() {
     }
   };
   
-  // Cleanup Object URLs
   useEffect(() => {
     const currentObjectUrl = objectUrlToRevoke;
     return () => {
@@ -274,7 +270,7 @@ export default function PdfStegPage() {
     
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
-  const isExtractPossible = !!(state.carrierFile || state.stegoFileDataUri) && !!state.selectedAlgorithmId;
+  const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract')) && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
 
   return (
@@ -285,7 +281,7 @@ export default function PdfStegPage() {
            <FileUploadCard
             carrierFile={state.carrierFile}
             fileName={state.fileName}
-            filePreviewUrl={state.filePreviewUrl} // No visual preview for PDF
+            filePreviewUrl={state.filePreviewUrl} 
             onFileChange={handleFileChange}
             messageToEmbed={state.messageToEmbed}
             onMessageToEmbedChange={handleMessageToEmbedChange}
@@ -322,4 +318,3 @@ export default function PdfStegPage() {
     </div>
   );
 }
-    

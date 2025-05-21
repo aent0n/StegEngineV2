@@ -66,10 +66,10 @@ Ceci est la quarante-neuvième ligne.
 Et voici la cinquantième ligne pour faire bonne mesure.`;
 
 const initialState: StegToolState = {
-  carrierFile: null,
+  carrierFile: null, // Not used for text tool
   fileName: null, 
   filePreviewUrl: null, 
-  stegoFileDataUri: null,
+  stegoFileDataUri: null, // Not used for text tool
 
   messageToEmbed: "",
   extractedMessage: null,
@@ -93,9 +93,9 @@ export default function TextStegPage() {
   const selectedAlgorithm = availableAlgorithms.find(algo => algo.id === state.selectedAlgorithmId);
 
   const updateCapacity = useCallback(async (text: string, algoId: string | null) => {
-    if (text && algoId) { // Ensure algoId is not null
+    if (text && algoId) { 
       try {
-        const info = await getTextCapacityInfo(text, algoId); // Pass algoId
+        const info = await getTextCapacityInfo(text, algoId); 
         const algoName = availableAlgorithms.find(a => a.id === algoId)?.name || 'sélectionné';
         let capacityText = `Capacité pour ${algoName}: ${info.capacityBytes} octets`;
         if (algoId === whitespaceTextAlgorithm.id) {
@@ -115,11 +115,10 @@ export default function TextStegPage() {
   }, [toast]);
 
   useEffect(() => {
-    if (state.operationMode === 'embed' && state.coverText && state.selectedAlgorithmId) {
-      updateCapacity(state.coverText, state.selectedAlgorithmId);
-    } else if (state.operationMode === 'extract' && state.stegoText && state.selectedAlgorithmId) {
-      updateCapacity(state.stegoText, state.selectedAlgorithmId);
-    } else if (state.coverText && state.selectedAlgorithmId) { // Fallback for initial load or mode switch
+    const textForCapacity = state.operationMode === 'embed' ? state.coverText : state.stegoText;
+    if (textForCapacity && state.selectedAlgorithmId) {
+      updateCapacity(textForCapacity, state.selectedAlgorithmId);
+    } else if (state.coverText && state.selectedAlgorithmId) { 
         updateCapacity(state.coverText, state.selectedAlgorithmId);
     }
   }, [state.coverText, state.stegoText, state.selectedAlgorithmId, state.operationMode, updateCapacity]);
@@ -132,15 +131,15 @@ export default function TextStegPage() {
             ...prev, 
             coverText: newText, 
             statusMessage: null, 
-            stegoText: null // Clear stegoText if coverText changes in embed mode
+            stegoText: null 
         }));
-    } else { // extract mode
+    } else { 
          setState(prev => ({ 
             ...prev, 
-            coverText: newText, // In extract mode, this textarea holds the stego text
-            stegoText: newText, // Sync stegoText as well
+            coverText: newText, 
+            stegoText: newText, 
             statusMessage: null, 
-            extractedMessage: null // Clear extracted message
+            extractedMessage: null 
         }));
     }
   };
@@ -158,28 +157,19 @@ export default function TextStegPage() {
         stegoText: null,
         capacityInfo: null 
     }));
-    // Recalculate capacity based on current text in the relevant textarea
-    const textForCapacity = state.operationMode === 'embed' ? state.coverText : state.stegoText;
-    if (textForCapacity) {
-        updateCapacity(textForCapacity, algorithmId);
-    } else if (state.coverText) { // Fallback to coverText if specific mode text is empty
-        updateCapacity(state.coverText, algorithmId);
-    }
   };
 
   const handleOperationModeChange = (mode: OperationMode) => {
-    const currentTextInPrimaryArea = state.coverText; // This is always the text in the main textarea
+    const currentTextInPrimaryArea = state.coverText; 
 
     setState(prev => ({ 
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
       extractedMessage: null, 
-      // When switching to extract, assume current coverText is the stegoText
       stegoText: mode === 'extract' ? currentTextInPrimaryArea : null, 
-      // When switching to embed, current coverText remains coverText
       coverText: mode === 'embed' ? currentTextInPrimaryArea : prev.coverText, 
-      capacityInfo: null // Reset capacity, will be recalculated by useEffect
+      capacityInfo: null 
     }));
   };
 
@@ -201,12 +191,12 @@ export default function TextStegPage() {
 
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
     try {
-      const resultStegoText = await embedMessageInText(state.coverText!, state.messageToEmbed, state.selectedAlgorithmId);
+      const resultStegoText = await embedMessageInText(state.coverText!, state.messageToEmbed, state.selectedAlgorithmId!);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
         stegoText: resultStegoText, 
-        statusMessage: {type: 'success', text:`Message intégré avec succès via ${selectedAlgorithm.name}. Le résultat est affiché.`} 
+        statusMessage: {type: 'success', text:`Message intégré via ${selectedAlgorithm.name}. Le résultat est affiché.`} 
       }));
       toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}. Le résultat est affiché.` });
     } catch (error: any) {
@@ -228,7 +218,7 @@ export default function TextStegPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `stego_text_${Date.now()}.txt`;
+        a.download = `steg_text_${Date.now()}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -251,7 +241,7 @@ export default function TextStegPage() {
     }
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
-      const extractedTextResult = await extractMessageFromText(textToExtractFrom, state.selectedAlgorithmId);
+      const extractedTextResult = await extractMessageFromText(textToExtractFrom, state.selectedAlgorithmId!);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
@@ -305,7 +295,7 @@ export default function TextStegPage() {
         setState(prev => ({ 
             ...prev, 
             coverText: newCoverText, 
-            stegoText: state.operationMode === 'extract' ? newCoverText : null, // Update stegoText if in extract mode
+            stegoText: state.operationMode === 'extract' ? newCoverText : null, 
             extractedMessage: null, 
             statusMessage: {type: 'success', text:"Texte porteur généré par l'IA."}
         }));
@@ -339,7 +329,6 @@ export default function TextStegPage() {
   const textAvailableForCopyStego = state.stegoText || (state.operationMode === 'extract' && state.coverText);
   const isCopyStegoTextPossible = !!textAvailableForCopyStego && textAvailableForCopyStego.length > 0;
 
-  // Determine which text to show in the main TextInteractionCard textarea
   const mainTextareaValue = state.operationMode === 'embed' ? state.coverText : (state.stegoText || state.coverText || '');
 
 
@@ -349,14 +338,14 @@ export default function TextStegPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-8">
            <TextInteractionCard
-            coverText={mainTextareaValue} // This will hold coverText in embed, stegoText in extract
+            coverText={mainTextareaValue} 
             onCoverTextChange={handleCoverTextChange}
             messageToEmbed={state.messageToEmbed}
             onMessageToEmbedChange={handleMessageToEmbedChange}
-            stegoText={state.stegoText} // Pass for internal logic if needed, but not for primary display if AlgorithmActionsCard handles it
+            stegoText={state.stegoText} 
             operationMode={state.operationMode}
             capacityInfo={state.capacityInfo}
-            statusMessage={state.operationMode === 'embed' ? state.statusMessage : null} // Show status from TextInteractionCard only in embed mode
+            statusMessage={state.operationMode === 'embed' ? state.statusMessage : null} 
             onGenerateAICoverText={handleGenerateAICoverText}
             isGeneratingCoverText={state.isGeneratingCoverText}
             selectedAlgorithmId={state.selectedAlgorithmId}
@@ -380,7 +369,7 @@ export default function TextStegPage() {
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
             isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} 
-            statusMessage={state.statusMessage} // AlgorithmActionsCard will display its own status
+            statusMessage={state.statusMessage} 
             extractedMessage={state.extractedMessage}
             isTextTool={true} 
             onCopyStegoText={handleCopyStegoText} 
@@ -392,4 +381,3 @@ export default function TextStegPage() {
     </div>
   );
 }
-    

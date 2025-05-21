@@ -9,10 +9,8 @@ import type { StegToolState, OperationMode, SteganographyAlgorithm } from "@/typ
 import { lsbAudioWavAlgorithm, wavMetadataCommentAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
 import { 
-  embedMessageInLSBAudio, 
-  extractMessageFromLSBAudio, 
-  embedMessageInWavMetadata,
-  extractMessageFromWavMetadata,
+  embedMessageInAudio, 
+  extractMessageFromAudio, 
   getAudioCapacityInfo, 
   convertObjectUrlToDataUri 
 } from '@/lib/audioSteganography';
@@ -56,7 +54,7 @@ export default function AudioStegPage() {
       stegoFileDataUri: null,
       extractedMessage: null,
       statusMessage: null,
-      capacityInfo: null, // Reset capacity on new file or algo change
+      capacityInfo: null, 
     }));
   };
   
@@ -72,8 +70,9 @@ export default function AudioStegPage() {
     }
 
     if (file) {
-      if (!selectedAlgorithm?.supportedFileTypes.includes(file.type)) {
-         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${selectedAlgorithm?.name || 'sélectionné'} (${selectedAlgorithm?.supportedFileTypes.join(', ') || 'audio/wav'}).` });
+      const currentSelectedAlgo = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
+      if (!currentSelectedAlgo?.supportedFileTypes.includes(file.type)) {
+         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'audio/wav'}).` });
         event.target.value = ""; 
         resetStateForNewFile(true);
         return;
@@ -87,13 +86,14 @@ export default function AudioStegPage() {
         stegoFileDataUri: null,
         statusMessage: null,
         extractedMessage: null, 
-        capacityInfo: null, // Reset before fetching new one
+        capacityInfo: null, 
       }));
 
       if (state.selectedAlgorithmId) {
         try {
           const info = await getAudioCapacityInfo(file, state.selectedAlgorithmId);
-          const capacityText = info.isEstimate ? `Capacité estimée pour ${selectedAlgorithm?.name}: env. ${info.capacityBytes} octets.` : `Capacité pour ${selectedAlgorithm?.name}: ${info.capacityBytes} octets.`;
+          const algoForCapacityToast = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
+          const capacityText = info.isEstimate ? `Capacité estimée pour ${algoForCapacityToast?.name}: env. ${info.capacityBytes} octets.` : `Capacité pour ${algoForCapacityToast?.name}: ${info.capacityBytes} octets.`;
           setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
         } catch (error: any) {
           toast({ variant: "destructive", title: "Erreur de Capacité Audio", description: error.message });
@@ -111,14 +111,13 @@ export default function AudioStegPage() {
   };
 
   const handleAlgorithmChange = async (algorithmId: string) => {
-    resetStateForNewFile(false); // Keep file, but reset capacity and stego data
+    resetStateForNewFile(false); 
     setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessage: null, stegoFileDataUri: null }));
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
     if (state.carrierFile && newSelectedAlgorithm) {
          if (!newSelectedAlgorithm.supportedFileTypes.includes(state.carrierFile.type)) {
             toast({ variant: "destructive", title: "Type de fichier incompatible", description: `Le fichier actuel (${state.carrierFile.name}) n'est pas compatible avec ${newSelectedAlgorithm.name}. Veuillez changer de fichier.` });
-            // Optionally, clear the file: resetStateForNewFile(true);
             return;
         }
       try {
@@ -127,7 +126,6 @@ export default function AudioStegPage() {
         setState(prev => ({ ...prev, capacityInfo: info, statusMessage: {type: 'info', text: capacityText} }));
       } catch (error: any) {
         toast({ variant: "destructive", title: "Erreur de Capacité Audio", description: error.message });
-        // setState(prev => ({ ...prev, capacityInfo: null, statusMessage: {type: 'error', text: error.message } }));
       }
     }
   };
@@ -138,7 +136,6 @@ export default function AudioStegPage() {
       operationMode: mode, 
       statusMessage: null, 
       extractedMessage: null, 
-      stegoFileDataUri: null, // Reset stego file when changing mode
     }));
   };
 
@@ -149,7 +146,7 @@ export default function AudioStegPage() {
     }
     
     const messageBytes = new TextEncoder().encode(state.messageToEmbed).length;
-    if (state.capacityInfo && (messageBytes > state.capacityInfo.capacityBytes) && !state.capacityInfo.isEstimate) { // For estimates, we might allow trying
+    if (state.capacityInfo && (messageBytes > state.capacityInfo.capacityBytes) && !state.capacityInfo.isEstimate) { 
         toast({ variant: "destructive", title: "Erreur de Capacité Audio", description: `Message trop long (${messageBytes} octets). Capacité max pour ${selectedAlgorithm.name}: ${state.capacityInfo.capacityBytes} octets.` });
         return;
     }
@@ -157,18 +154,10 @@ export default function AudioStegPage() {
       toast({ variant: "default", title: "Avertissement de Capacité", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithm.name}. L'intégration pourrait échouer.` });
     }
 
-
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
     try {
-      let stegoObjectUrl: string | null = null;
-      if (state.selectedAlgorithmId === lsbAudioWavAlgorithm.id) {
-        stegoObjectUrl = await embedMessageInLSBAudio(state.carrierFile, state.messageToEmbed);
-      } else if (state.selectedAlgorithmId === wavMetadataCommentAlgorithm.id) {
-        stegoObjectUrl = await embedMessageInWavMetadata(state.carrierFile, state.messageToEmbed);
-      } else {
-        throw new Error("Algorithme d'intégration non supporté ou sélectionné.");
-      }
-
+      const stegoObjectUrl = await embedMessageInAudio(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
+      
       if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
       setObjectUrlToRevoke(stegoObjectUrl); 
 
@@ -198,7 +187,7 @@ export default function AudioStegPage() {
         const a = document.createElement('a');
         a.href = dataUri;
         const fileExtension = state.fileName.split('.').pop() || 'wav';
-        const fileNameBase = state.fileName.substring(0, state.fileName.length - (fileExtension.length + 1));
+        const fileNameBase = state.fileName.substring(0, state.fileName.lastIndexOf('.')) || state.fileName;
         a.download = `steg_${fileNameBase}.${fileExtension}`;
         document.body.appendChild(a);
         a.click();
@@ -214,20 +203,30 @@ export default function AudioStegPage() {
   };
 
   const handleExtract = async () => {
-    if (!state.carrierFile || !state.selectedAlgorithmId || !selectedAlgorithm) {
+    let fileForExtraction: File | null = null;
+
+    if (state.stegoFileDataUri && state.operationMode === 'extract') {
+        try {
+            const response = await fetch(state.stegoFileDataUri);
+            if (!response.ok) throw new Error(`Échec de la récupération du fichier stéganographié: ${response.status}`);
+            const blob = await response.blob();
+            fileForExtraction = new File([blob], state.fileName || "stego_audio.wav", { type: blob.type || selectedAlgorithm?.supportedFileTypes[0] || "audio/wav" });
+        } catch (fetchError: any) {
+            toast({ variant: "destructive", title: "Erreur interne", description: `Impossible de charger le fichier modifié pour extraction: ${fetchError.message}` });
+            setState(prev => ({ ...prev, isProcessing: false }));
+            return;
+        }
+    } else if (state.carrierFile) {
+        fileForExtraction = state.carrierFile;
+    }
+    
+    if (!fileForExtraction || !state.selectedAlgorithmId || !selectedAlgorithm) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier audio et choisir un algorithme." });
       return;
     }
     setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
     try {
-      let extractedText: string | null = null;
-       if (state.selectedAlgorithmId === lsbAudioWavAlgorithm.id) {
-        extractedText = await extractMessageFromLSBAudio(state.carrierFile);
-      } else if (state.selectedAlgorithmId === wavMetadataCommentAlgorithm.id) {
-        extractedText = await extractMessageFromWavMetadata(state.carrierFile);
-      } else {
-        throw new Error("Algorithme d'extraction non supporté ou sélectionné.");
-      }
+      const extractedText = await extractMessageFromAudio(fileForExtraction, state.selectedAlgorithmId);
 
       setState(prev => ({ 
         ...prev, 
@@ -272,7 +271,7 @@ export default function AudioStegPage() {
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo && !isCapacityExceeded;
     
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
-  const isExtractPossible = !!state.carrierFile && !!state.selectedAlgorithmId;
+  const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract')) && !!state.selectedAlgorithmId;
   const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
 
 
