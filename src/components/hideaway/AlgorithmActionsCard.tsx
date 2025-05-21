@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
-import type { SteganographyAlgorithm, OperationMode } from "@/types";
-import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2, FileText as FileTextIcon } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea"; // Import Textarea
+import type { SteganographyAlgorithm, OperationMode, ExtractedMessageDetail } from "@/types"; // Added ExtractedMessageDetail
+import { Download, ShieldCheck, Shuffle, Search, Copy as CopyIcon, Loader2, FileText as FileTextIcon, AlertTriangle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea"; 
 
 interface AlgorithmActionsCardProps {
   algorithms: SteganographyAlgorithm[];
@@ -21,7 +21,7 @@ interface AlgorithmActionsCardProps {
   onEmbed: () => void;
   onExportStegoFile: () => void;
   onExtract: () => void;
-  onCopyExtractedMessage: () => void; 
+  onCopyExtractedMessage: (message: string) => void; // Changed to accept message
 
   isProcessing: boolean;
   isExporting: boolean; 
@@ -29,10 +29,10 @@ interface AlgorithmActionsCardProps {
   isEmbedPossible: boolean;
   isExportStegoFilePossible: boolean;
   isExtractPossible: boolean;
-  isCopyExtractedMessagePossible: boolean; 
+  // isCopyExtractedMessagePossible: boolean; // Removed, handled internally
 
   statusMessage: { type: 'success' | 'error' | 'info', text: string } | null;
-  extractedMessage: string | null;
+  extractedMessages: ExtractedMessageDetail[] | null; // Changed from string | null
   
   isTextTool?: boolean;
   onCopyStegoText?: () => void;
@@ -55,9 +55,9 @@ export default function AlgorithmActionsCard({
   isEmbedPossible,
   isExportStegoFilePossible,
   isExtractPossible,
-  isCopyExtractedMessagePossible,
+  // isCopyExtractedMessagePossible, // Removed
   statusMessage,
-  extractedMessage,
+  extractedMessages, // Changed
   isTextTool = false,
   onCopyStegoText,
   isCopyStegoTextPossible,
@@ -81,7 +81,11 @@ export default function AlgorithmActionsCard({
 
         <div className="space-y-2">
           <Label htmlFor="algorithmSelect" className="text-base">Sélectionner l'Algorithme</Label>
-          <Select value={selectedAlgorithmId || ""} onValueChange={onAlgorithmChange} disabled={algorithms.length === 0 || isProcessing}>
+          <Select 
+            value={selectedAlgorithmId || ""} 
+            onValueChange={onAlgorithmChange} 
+            disabled={algorithms.length === 0 || isProcessing }
+          >
             <SelectTrigger id="algorithmSelect" className="text-base" aria-label="Sélectionner l'algorithme de stéganographie">
               <SelectValue placeholder="Sélectionner un algorithme" />
             </SelectTrigger>
@@ -100,6 +104,11 @@ export default function AlgorithmActionsCard({
           {selectedAlgorithm && (
             <p className="text-sm text-muted-foreground mt-2 p-2 bg-secondary/30 rounded-md">
               {selectedAlgorithm.description}
+              {operationMode === 'extract' && (
+                <span className="block mt-1 text-xs italic text-primary">
+                  (Note: en mode Extraction, tous les algorithmes compatibles seront essayés.)
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -178,34 +187,46 @@ export default function AlgorithmActionsCard({
               {isProcessing ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Extraction...</>
               ) : (
-                <><Search className="mr-2 h-5 w-5" /> Extraire le Message</>
+                <><Search className="mr-2 h-5 w-5" /> Tenter l'Extraction</> 
               )}
             </Button>
             
             <div>
-              <Label htmlFor="extractedMessageDisplay" className="text-base font-medium">Message Extrait :</Label>
+              <Label htmlFor="extractedMessageDisplay" className="text-base font-medium">
+                {extractedMessages && extractedMessages.length > 0 ? `Message(s) Extrait(s) (${extractedMessages.length}) :` : "Message(s) Extrait(s) :"}
+              </Label>
               <div 
                 id="extractedMessageDisplay"
-                className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[100px] text-sm text-foreground whitespace-pre-wrap break-all"
-                aria-label="Message extrait"
+                className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[100px] text-sm text-foreground space-y-3"
+                aria-label="Message(s) extrait(s)"
               >
-                {isProcessing 
-                  ? "Extraction en cours..." 
-                  : (extractedMessage && extractedMessage.length > 0 
-                      ? extractedMessage 
-                      : "Le message extrait apparaîtra ici...")
-                }
+                {isProcessing ? (
+                  <p>Extraction en cours...</p>
+                ) : extractedMessages && extractedMessages.length > 0 ? (
+                  extractedMessages.map((item, index) => (
+                    <div key={index} className="border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="text-xs font-semibold text-primary">
+                          Extrait via : {item.algorithmName}
+                        </p>
+                        <Button
+                          onClick={() => onCopyExtractedMessage(item.message)}
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={!item.message || isProcessing}
+                          aria-label={`Copier le message extrait via ${item.algorithmName}`}
+                        >
+                          <CopyIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <p className="whitespace-pre-wrap break-all text-xs">{item.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p>Aucun message trouvé ou le message extrait apparaîtra ici...</p>
+                )}
               </div>
-              <Button
-                onClick={onCopyExtractedMessage}
-                disabled={!isCopyExtractedMessagePossible || isProcessing}
-                variant="outline"
-                size="sm" 
-                className="w-full mt-3 text-base"
-                aria-label="Copier le message extrait"
-              >
-                <CopyIcon className="mr-2 h-4 w-4" /> Copier le Message
-              </Button>
             </div>
           </div>
         )}
@@ -217,6 +238,7 @@ export default function AlgorithmActionsCard({
             'text-blue-600 dark:text-blue-400' 
           } pt-2`}>
             {statusMessage.type === 'success' && <ShieldCheck className="inline mr-1 h-4 w-4" />}
+            {statusMessage.type === 'error' && <AlertTriangle className="inline mr-1 h-4 w-4" />}
             {statusMessage.text}
           </p>
         )}

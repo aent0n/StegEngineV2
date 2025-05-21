@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from "react";
 import TextInteractionCard from "@/components/hideaway/TextInteractionCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
-import type { StegToolState, OperationMode, SteganographyAlgorithm } from "@/types";
+import type { StegToolState, OperationMode, SteganographyAlgorithm, ExtractedMessageDetail } from "@/types";
 import { whitespaceTextAlgorithm, zeroWidthCharsTextAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -66,13 +66,13 @@ Ceci est la quarante-neuvième ligne.
 Et voici la cinquantième ligne pour faire bonne mesure.`;
 
 const initialState: StegToolState = {
-  carrierFile: null, // Not used for text tool
+  carrierFile: null, 
   fileName: null, 
   filePreviewUrl: null, 
-  stegoFileDataUri: null, // Not used for text tool
+  stegoFileDataUri: null, 
 
   messageToEmbed: "",
-  extractedMessage: null,
+  extractedMessages: null, // Changed
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -90,7 +90,7 @@ export default function TextStegPage() {
   const [state, setState] = useState<StegToolState>(initialState);
   const { toast } = useToast();
 
-  const selectedAlgorithm = availableAlgorithms.find(algo => algo.id === state.selectedAlgorithmId);
+  const selectedAlgorithmForUI = availableAlgorithms.find(algo => algo.id === state.selectedAlgorithmId);
 
   const updateCapacity = useCallback(async (text: string, algoId: string | null) => {
     if (text && algoId) { 
@@ -139,7 +139,7 @@ export default function TextStegPage() {
             coverText: newText, 
             stegoText: newText, 
             statusMessage: null, 
-            extractedMessage: null 
+            extractedMessages: null // Changed
         }));
     }
   };
@@ -153,7 +153,7 @@ export default function TextStegPage() {
         ...prev, 
         selectedAlgorithmId: algorithmId, 
         statusMessage: null, 
-        extractedMessage: null, 
+        extractedMessages: null, // Changed
         stegoText: null,
         capacityInfo: null 
     }));
@@ -166,7 +166,7 @@ export default function TextStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessage: null, 
+      extractedMessages: null, // Changed
       stegoText: mode === 'extract' ? currentTextInPrimaryArea : null, 
       coverText: mode === 'embed' ? currentTextInPrimaryArea : prev.coverText, 
       capacityInfo: null 
@@ -174,7 +174,7 @@ export default function TextStegPage() {
   };
 
   const handleEmbed = async () => {
-    if (!state.coverText || !state.selectedAlgorithmId || !selectedAlgorithm) {
+    if (!state.coverText || !state.selectedAlgorithmId || !selectedAlgorithmForUI) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez fournir un texte porteur et choisir un algorithme." });
       return;
     }
@@ -185,24 +185,24 @@ export default function TextStegPage() {
     
     const messageBytes = new TextEncoder().encode(state.messageToEmbed).length;
     if (state.capacityInfo && (messageBytes > state.capacityInfo.capacityBytes) && !state.capacityInfo.isEstimate) {
-        toast({ variant: "destructive", title: "Erreur de Capacité Texte", description: `Message trop long (${messageBytes} octets). Capacité max pour ${selectedAlgorithm.name}: ${state.capacityInfo.capacityBytes} octets.` });
+        toast({ variant: "destructive", title: "Erreur de Capacité Texte", description: `Message trop long (${messageBytes} octets). Capacité max pour ${selectedAlgorithmForUI.name}: ${state.capacityInfo.capacityBytes} octets.` });
         return;
     }
 
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithmForUI.name}) en cours...`} }));
     try {
       const resultStegoText = await embedMessageInText(state.coverText!, state.messageToEmbed, state.selectedAlgorithmId!);
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
         stegoText: resultStegoText, 
-        statusMessage: {type: 'success', text:`Message intégré via ${selectedAlgorithm.name}. Le résultat est affiché.`} 
+        statusMessage: {type: 'success', text:`Message intégré via ${selectedAlgorithmForUI.name}. Le résultat est affiché.`} 
       }));
-      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}. Le résultat est affiché.` });
+      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithmForUI.name}. Le résultat est affiché.` });
     } catch (error: any) {
-      console.error(`Erreur d'intégration texte (${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, stegoText: null, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithm.name}): ${error.message}`} }));
-      toast({ variant: "destructive", title: `Erreur d'Intégration (${selectedAlgorithm.name})`, description: error.message });
+      console.error(`Erreur d'intégration texte (${selectedAlgorithmForUI.name}):`, error);
+      setState(prev => ({ ...prev, isProcessing: false, stegoText: null, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithmForUI.name}): ${error.message}`} }));
+      toast({ variant: "destructive", title: `Erreur d'Intégration (${selectedAlgorithmForUI.name})`, description: error.message });
     }
   };
   
@@ -235,34 +235,63 @@ export default function TextStegPage() {
 
   const handleExtract = async () => {
     const textToExtractFrom = state.operationMode === 'extract' ? state.coverText : state.stegoText;
-    if (!textToExtractFrom || !state.selectedAlgorithmId || !selectedAlgorithm) { 
-      toast({ variant: "destructive", title: "Erreur", description: "Veuillez fournir un texte stéganographié et choisir un algorithme." });
+    if (!textToExtractFrom) { 
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez fournir un texte stéganographié." });
       return;
     }
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
-    try {
-      const extractedTextResult = await extractMessageFromText(textToExtractFrom, state.selectedAlgorithmId!);
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    
+    const foundMessages: ExtractedMessageDetail[] = [];
+    let extractionErrorOccurred = false;
+    let lastErrorMessage = "";
+
+    for (const algo of availableAlgorithms) {
+      try {
+        setState(prev => ({...prev, statusMessage: {type: 'info', text: `Tentative avec ${algo.name}...`}}));
+        const extractedTextResult = await extractMessageFromText(textToExtractFrom, algo.id!);
+        if (extractedTextResult && extractedTextResult.trim().length > 0) {
+          foundMessages.push({ algorithmName: algo.name, message: extractedTextResult });
+        }
+      } catch (error: any) {
+        console.error(`Erreur d'extraction texte avec ${algo.name}:`, error);
+        extractionErrorOccurred = true;
+        lastErrorMessage = error.message;
+      }
+    }
+    
+    if (foundMessages.length > 0) {
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        extractedMessage: extractedTextResult, 
-        statusMessage: {type: 'success', text:`Message extrait avec succès via ${selectedAlgorithm.name}.`} 
+        extractedMessages: foundMessages, 
+        statusMessage: {type: 'success', text:`${foundMessages.length} message(s) extrait(s) avec succès.`} 
       }));
-      toast({ title: "Extraction Réussie", description: `Message extrait via ${selectedAlgorithm.name}.` });
-    } catch (error: any) {
-      console.error(`Erreur d'extraction texte (${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction (${selectedAlgorithm.name}): ${error.message}`}, extractedMessage: '' }));
-      toast({ variant: "destructive", title: `Erreur d'Extraction (${selectedAlgorithm.name})`, description: error.message });
+      toast({ title: "Extraction Réussie", description: `${foundMessages.length} message(s) extrait(s).` });
+    } else {
+      const finalMessage = extractionErrorOccurred 
+        ? `Aucun message trouvé. Dernière erreur: ${lastErrorMessage}` 
+        : "Aucun message trouvé après avoir essayé tous les algorithmes compatibles.";
+      setState(prev => ({ 
+        ...prev, 
+        isProcessing: false, 
+        extractedMessages: [], 
+        statusMessage: {type: extractionErrorOccurred ? 'error' : 'info', text: finalMessage}
+      }));
+      toast({ 
+        variant: extractionErrorOccurred ? "destructive" : "default", 
+        title: extractionErrorOccurred ? "Erreur d'Extraction" : "Aucun Message Trouvé", 
+        description: finalMessage 
+      });
     }
   };
   
-  const handleCopyExtractedMessage = async () => {
-    if (!state.extractedMessage) {
-      toast({ variant: "destructive", title: "Erreur", description: "Aucun message extrait à copier." });
+  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+    if (!message) {
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
     }
     try {
-      await navigator.clipboard.writeText(state.extractedMessage);
+      await navigator.clipboard.writeText(message);
       toast({ title: "Copié", description: "Message extrait copié dans le presse-papiers." });
     } catch (err) {
       console.error('Échec de la copie du texte: ', err);
@@ -296,7 +325,7 @@ export default function TextStegPage() {
             ...prev, 
             coverText: newCoverText, 
             stegoText: state.operationMode === 'extract' ? newCoverText : null, 
-            extractedMessage: null, 
+            extractedMessages: null, // Changed
             statusMessage: {type: 'success', text:"Texte porteur généré par l'IA."}
         }));
         toast({title: "Succès", description: "Texte porteur généré par l'IA."})
@@ -322,9 +351,9 @@ export default function TextStegPage() {
   const isExportStegoFilePossible = !!textAvailableForExport;
   
   const textAvailableForExtract = state.operationMode === 'extract' ? state.coverText : state.stegoText;
-  const isExtractPossible = !!textAvailableForExtract && !!state.selectedAlgorithmId; 
+  const isExtractPossible = !!textAvailableForExtract; 
   
-  const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
+  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
   
   const textAvailableForCopyStego = state.stegoText || (state.operationMode === 'extract' && state.coverText);
   const isCopyStegoTextPossible = !!textAvailableForCopyStego && textAvailableForCopyStego.length > 0;
@@ -368,9 +397,9 @@ export default function TextStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} 
+            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage} 
-            extractedMessage={state.extractedMessage}
+            extractedMessages={state.extractedMessages} // Changed
             isTextTool={true} 
             onCopyStegoText={handleCopyStegoText} 
             isCopyStegoTextPossible={isCopyStegoTextPossible}

@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect } from "react";
 import FileUploadCard from "@/components/hideaway/FileUploadCard";
 import AlgorithmActionsCard from "@/components/hideaway/AlgorithmActionsCard";
-import type { StegToolState, OperationMode, SteganographyAlgorithm, CapacityInfo } from "@/types";
+import type { StegToolState, OperationMode, SteganographyAlgorithm, CapacityInfo, ExtractedMessageDetail } from "@/types";
 import { pdfMetadataAlgorithm } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
 import { embedMessageInPdf, extractMessageFromPdf, getPdfCapacityInfo, convertObjectUrlToDataUri } from '@/lib/pdfSteganography';
@@ -18,7 +18,7 @@ const initialState: StegToolState = {
   filePreviewUrl: null, 
   stegoFileDataUri: null, 
   messageToEmbed: "",
-  extractedMessage: null,
+  extractedMessages: null, // Changed
   selectedAlgorithmId: availableAlgorithms.length > 0 ? availableAlgorithms[0].id : null,
   aiSuggestion: null, 
   isProcessing: false,
@@ -34,7 +34,7 @@ export default function PdfStegPage() {
   const { toast } = useToast();
   const [objectUrlToRevoke, setObjectUrlToRevoke] = useState<string | null>(null);
 
-  const selectedAlgorithm = availableAlgorithms.find(algo => algo.id === state.selectedAlgorithmId);
+  const selectedAlgorithmForUI = availableAlgorithms.find(algo => algo.id === state.selectedAlgorithmId);
 
   const resetStateForNewFile = (clearFileSelection: boolean = false) => {
     if (objectUrlToRevoke) {
@@ -50,7 +50,7 @@ export default function PdfStegPage() {
       fileName: clearFileSelection ? null : prev.fileName,
       filePreviewUrl: clearFileSelection ? null : prev.filePreviewUrl, 
       stegoFileDataUri: null,
-      extractedMessage: null, 
+      extractedMessages: null, // Changed
       statusMessage: null,
       capacityInfo: null,
     }));
@@ -70,7 +70,7 @@ export default function PdfStegPage() {
     if (file) {
       const currentSelectedAlgo = availableAlgorithms.find(a => a.id === state.selectedAlgorithmId) || availableAlgorithms[0];
       if (!currentSelectedAlgo?.supportedFileTypes.includes(file.type)) {
-         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'application/pdf'}).` });
+         toast({ variant: "destructive", title: "Type de fichier non supporté", description: `Veuillez sélectionner un type de fichier compatible avec l'algorithme ${currentSelectedAlgo?.name || 'sélectionné'} (${currentSelectedAlgo?.supportedFileTypes.join(', ') || 'application/pdf'}).` });
         event.target.value = ""; 
         resetStateForNewFile(true);
         return;
@@ -83,7 +83,7 @@ export default function PdfStegPage() {
         filePreviewUrl: null, 
         stegoFileDataUri: null, 
         statusMessage: null,
-        extractedMessage: null, 
+        extractedMessages: null, // Changed
         capacityInfo: null, 
       }));
 
@@ -110,7 +110,7 @@ export default function PdfStegPage() {
 
   const handleAlgorithmChange = async (algorithmId: string) => {
     resetStateForNewFile(false); 
-    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessage: null, stegoFileDataUri: null }));
+    setState(prev => ({ ...prev, selectedAlgorithmId: algorithmId, statusMessage: null, capacityInfo: null, extractedMessages: null, stegoFileDataUri: null })); // Changed
     
     const newSelectedAlgorithm = availableAlgorithms.find(algo => algo.id === algorithmId);
     if (state.carrierFile && newSelectedAlgorithm) {
@@ -133,22 +133,22 @@ export default function PdfStegPage() {
       ...prev, 
       operationMode: mode, 
       statusMessage: null, 
-      extractedMessage: null, 
+      extractedMessages: null, // Changed
     }));
   };
 
   const handleEmbed = async () => {
-    if (!state.carrierFile || !state.messageToEmbed || !state.selectedAlgorithmId || !selectedAlgorithm) {
+    if (!state.carrierFile || !state.messageToEmbed || !state.selectedAlgorithmId || !selectedAlgorithmForUI) {
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier PDF, saisir un message et choisir un algorithme." });
       return;
     }
     
     const messageBytes = new TextEncoder().encode(state.messageToEmbed).length;
     if (state.capacityInfo && state.capacityInfo.isEstimate && messageBytes > state.capacityInfo.capacityBytes) {
-      toast({ variant: "default", title: "Avertissement de Capacité", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithm.name}. L'intégration pourrait échouer.` });
+      toast({ variant: "default", title: "Avertissement de Capacité", description: `Le message (${messageBytes} octets) pourrait dépasser la capacité estimée (${state.capacityInfo.capacityBytes} octets) pour ${selectedAlgorithmForUI.name}. L'intégration pourrait échouer.` });
     }
 
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithm.name}) en cours...`} }));
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Intégration (${selectedAlgorithmForUI.name}) en cours...`} }));
     try {
       const stegoObjectUrl = await embedMessageInPdf(state.carrierFile, state.messageToEmbed, state.selectedAlgorithmId);
       
@@ -159,13 +159,13 @@ export default function PdfStegPage() {
         ...prev, 
         isProcessing: false, 
         stegoFileDataUri: stegoObjectUrl, 
-        statusMessage: {type: 'success', text:`Message intégré avec succès (${selectedAlgorithm.name}).`} 
+        statusMessage: {type: 'success', text:`Message intégré avec succès (${selectedAlgorithmForUI.name}).`} 
       }));
-      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithm.name}.` });
+      toast({ title: "Succès", description: `Message intégré via ${selectedAlgorithmForUI.name}.` });
     } catch (error: any) {
-      console.error(`Erreur d'intégration PDF (${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithm.name}): ${error.message}`} }));
-      toast({ variant: "destructive", title: `Erreur d'Intégration (${selectedAlgorithm.name})`, description: error.message });
+      console.error(`Erreur d'intégration PDF (${selectedAlgorithmForUI.name}):`, error);
+      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'intégration (${selectedAlgorithmForUI.name}): ${error.message}`} }));
+      toast({ variant: "destructive", title: `Erreur d'Intégration (${selectedAlgorithmForUI.name})`, description: error.message });
     }
   };
   
@@ -219,36 +219,69 @@ export default function PdfStegPage() {
         fileForExtraction = state.carrierFile;
     }
 
-    if (!fileForExtraction || !state.selectedAlgorithmId || !selectedAlgorithm) {
-      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier PDF et choisir un algorithme." });
+    if (!fileForExtraction) {
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner un fichier PDF." });
       return;
     }
 
-    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction (${selectedAlgorithm.name}) en cours...`}, extractedMessage: null }));
-    try {
-      const extractedTextResult = await extractMessageFromPdf(fileForExtraction, state.selectedAlgorithmId);
-      console.log("[PdfStegPage] Texte extrait reçu de la fonction:", `"${extractedTextResult}"`);
+    setState(prev => ({ ...prev, isProcessing: true, statusMessage: {type: 'info', text:`Extraction en cours...`}, extractedMessages: null })); // Changed
+    
+    const foundMessages: ExtractedMessageDetail[] = [];
+    let extractionErrorOccurred = false;
+    let lastErrorMessage = "";
+
+    for (const algo of availableAlgorithms) { // Should only be one for PDF, but loop is fine
+        if (!fileForExtraction.type || !algo.supportedFileTypes.includes(fileForExtraction.type)) {
+            console.log(`Skipping ${algo.name} for ${fileForExtraction.name} as it does not support ${fileForExtraction.type}`);
+            continue;
+        }
+        try {
+          setState(prev => ({...prev, statusMessage: {type: 'info', text: `Tentative avec ${algo.name}...`}}));
+          const extractedTextResult = await extractMessageFromPdf(fileForExtraction, algo.id);
+          console.log("[PdfStegPage] Texte extrait reçu de la fonction:", `"${extractedTextResult}"`);
+          if (extractedTextResult && extractedTextResult.trim().length > 0) {
+            foundMessages.push({ algorithmName: algo.name, message: extractedTextResult });
+          }
+        } catch (error: any) {
+          console.error(`Erreur d'extraction PDF avec ${algo.name}:`, error);
+          extractionErrorOccurred = true;
+          lastErrorMessage = error.message;
+        }
+    }
+    
+    if (foundMessages.length > 0) {
+        setState(prev => ({ 
+            ...prev, 
+            isProcessing: false, 
+            extractedMessages: foundMessages, 
+            statusMessage: {type: 'success', text:`${foundMessages.length} message(s) extrait(s) avec succès.`} 
+          }));
+          toast({ title: "Extraction Réussie", description: `${foundMessages.length} message(s) extrait(s).` });
+    } else {
+        const finalMessage = extractionErrorOccurred 
+        ? `Aucun message trouvé. Dernière erreur: ${lastErrorMessage}` 
+        : "Aucun message trouvé après avoir essayé tous les algorithmes compatibles.";
       setState(prev => ({ 
         ...prev, 
         isProcessing: false, 
-        extractedMessage: extractedTextResult || "", 
-        statusMessage: {type: 'success', text:`Message extrait avec succès (${selectedAlgorithm.name}).`} 
+        extractedMessages: [], 
+        statusMessage: {type: extractionErrorOccurred ? 'error' : 'info', text: finalMessage}
       }));
-      toast({ title: "Extraction Réussie", description: `Message extrait via ${selectedAlgorithm.name}.` });
-    } catch (error: any) {
-      console.error(`Erreur d'extraction PDF (${selectedAlgorithm.name}):`, error);
-      setState(prev => ({ ...prev, isProcessing: false, statusMessage: {type: 'error', text: `Erreur d'extraction (${selectedAlgorithm.name}): ${error.message}`}, extractedMessage: '' }));
-      toast({ variant: "destructive", title: `Erreur d'Extraction (${selectedAlgorithm.name})`, description: error.message });
+      toast({ 
+        variant: extractionErrorOccurred ? "destructive" : "default", 
+        title: extractionErrorOccurred ? "Erreur d'Extraction" : "Aucun Message Trouvé", 
+        description: finalMessage 
+      });
     }
   };
   
-  const handleCopyExtractedMessage = async () => {
-    if (!state.extractedMessage) {
-      toast({ variant: "destructive", title: "Erreur", description: "Aucun message extrait à copier." });
+  const handleCopyExtractedMessage = async (message: string) => { // Accepts message
+    if (!message) {
+      toast({ variant: "destructive", title: "Erreur", description: "Aucun message à copier." });
       return;
     }
     try {
-      await navigator.clipboard.writeText(state.extractedMessage);
+      await navigator.clipboard.writeText(message);
       toast({ title: "Copié", description: "Message extrait copié dans le presse-papiers." });
     } catch (err) {
       console.error('Échec de la copie du texte: ', err);
@@ -270,8 +303,8 @@ export default function PdfStegPage() {
     
   const isEmbedPossible = !!state.carrierFile && !!state.messageToEmbed && !!state.selectedAlgorithmId && !!state.capacityInfo ;
   const isExportStegoFilePossible = !!state.stegoFileDataUri;
-  const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract')) && !!state.selectedAlgorithmId;
-  const isCopyExtractedMessagePossible = !!state.extractedMessage && state.extractedMessage.length > 0;
+  const isExtractPossible = !!(state.carrierFile || (state.stegoFileDataUri && state.operationMode === 'extract'));
+  // const isCopyExtractedMessagePossible = !!state.extractedMessages && state.extractedMessages.length > 0; // Removed
 
   return (
     <div className="space-y-8">
@@ -286,10 +319,10 @@ export default function PdfStegPage() {
             messageToEmbed={state.messageToEmbed}
             onMessageToEmbedChange={handleMessageToEmbedChange}
             operationMode={state.operationMode}
-            acceptedFileTypes={selectedAlgorithm?.supportedFileTypes.join(',') || "application/pdf"}
-            supportedFileTypesMessage={`Fichiers compatibles: ${selectedAlgorithm?.supportedFileTypes.join(', ') || 'PDF'}.`}
+            acceptedFileTypes={selectedAlgorithmForUI?.supportedFileTypes.join(',') || "application/pdf"}
+            supportedFileTypesMessage={`Fichiers compatibles: ${selectedAlgorithmForUI?.supportedFileTypes.join(', ') || 'PDF'}.`}
             capacityInfo={state.capacityInfo}
-            isMetadataAlgorithm={selectedAlgorithm?.isMetadataBased || false}
+            isMetadataAlgorithm={selectedAlgorithmForUI?.isMetadataBased || false}
           />
         </div>
         
@@ -309,9 +342,9 @@ export default function PdfStegPage() {
             isEmbedPossible={isEmbedPossible}
             isExportStegoFilePossible={isExportStegoFilePossible}
             isExtractPossible={isExtractPossible}
-            isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} 
+            // isCopyExtractedMessagePossible={isCopyExtractedMessagePossible} // Removed
             statusMessage={state.statusMessage}
-            extractedMessage={state.extractedMessage} 
+            extractedMessages={state.extractedMessages} // Changed
           />
         </div>
       </div>

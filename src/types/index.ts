@@ -1,6 +1,11 @@
 
 import type { AlgorithmAdvisorOutput } from "@/ai/flows/algorithm-advisor";
 
+export interface ExtractedMessageDetail {
+  algorithmName: string;
+  message: string;
+}
+
 export interface SteganographyAlgorithm {
   id: string;
   name: string;
@@ -27,7 +32,7 @@ export interface StegToolState {
   stegoFileDataUri: string | null;
 
   messageToEmbed: string;
-  extractedMessage: string | null;
+  extractedMessages: ExtractedMessageDetail[] | null; // Changed from string | null
 
   selectedAlgorithmId: string | null;
   aiSuggestion: AlgorithmAdvisorOutput | null;
@@ -67,7 +72,7 @@ export const pngMetadataTextAlgorithm: SteganographyAlgorithm = {
   description: 'Cache le message dans un chunk tEXt (commentaire personnalisé) d\'un fichier PNG. N\'altère pas les pixels.',
   supportedFileTypes: ['image/png'],
   isMetadataBased: true,
-  estimatedCapacity: 2048, // Example estimated capacity
+  estimatedCapacity: 2048, 
 };
 
 export const lsbAudioWavAlgorithm: SteganographyAlgorithm = {
@@ -83,7 +88,7 @@ export const wavMetadataCommentAlgorithm: SteganographyAlgorithm = {
   description: 'Cache le message dans le champ commentaire (ICMT) de l\'en-tête INFO d\'un fichier WAV. Moins robuste mais n\'altère pas l\'audio.',
   supportedFileTypes: ['audio/wav', 'audio/wave', 'audio/x-wav'],
   isMetadataBased: true,
-  estimatedCapacity: 1024, // Example estimated capacity
+  estimatedCapacity: 1024, 
 };
 
 export const whitespaceTextAlgorithm: SteganographyAlgorithm = {
@@ -103,12 +108,12 @@ export const zeroWidthCharsTextAlgorithm: SteganographyAlgorithm = {
 };
 
 export const pdfMetadataAlgorithm: SteganographyAlgorithm = {
-  id: 'pdf_metadata_simulated', // ID remains same as functions in pdfSteganography.ts use this
+  id: 'pdf_metadata_simulated', 
   name: 'Métadonnées PDF (Champ Sujet)',
   description: 'Dissimulation de données dans le champ "Sujet" des métadonnées d\'un fichier PDF.',
   supportedFileTypes: ['application/pdf'],
   isMetadataBased: true,
-  estimatedCapacity: 2048, // Example estimated capacity
+  estimatedCapacity: 2048, 
 };
 
 export const mockAlgorithms: SteganographyAlgorithm[] = [
